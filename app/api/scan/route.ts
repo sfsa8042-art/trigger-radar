@@ -1,13 +1,41 @@
 import { type NextRequest } from 'next/server';
 import type { Source } from '@/lib/types';
 
-const KEYWORDS = [
+// ── Stage 1: positive keywords (initial gate) ────────────────────────────────
+const POSITIVE_KEYWORDS = [
   'спецодежда', 'спецобувь', 'сиз', 'гост', 'тр тс', 'сертификац',
   'тендер', 'закупк', 'мембран', 'антистат', 'огнестойк',
   'производств', 'ткань', 'защитная одежда', 'ppe', 'workwear', 'safety shoe',
 ];
 
-const MAX_SOURCES = 10;
+// ── Stage 2: negative keywords (checked against title only) ──────────────────
+const NEGATIVE_KEYWORDS = [
+  'календарь', 'исполнительное производство', 'алименты', 'банкротство',
+  'налоги', 'отпуск', 'зарплата', 'пенсия', 'бухгалтерия',
+  'ндфл', 'кадры', 'трудовая книжка',
+];
+
+// ── Stage 3: weighted scoring ─────────────────────────────────────────────────
+const SCORE_RULES: Array<{ pattern: RegExp; points: number }> = [
+  { pattern: /спецодежда/i,      points: 5 },
+  { pattern: /\bсиз\b/i,         points: 5 },
+  { pattern: /спецобувь/i,       points: 5 },
+  { pattern: /\bгост\b/i,        points: 4 },
+  { pattern: /тр\s*тс/i,         points: 4 },
+  { pattern: /антистат/i,        points: 4 },
+  { pattern: /огнестойк/i,       points: 4 },
+  { pattern: /мембран/i,         points: 4 },
+  { pattern: /тендер/i,          points: 3 },
+  { pattern: /закупк/i,          points: 3 },
+  // производство + СИЗ в одной строке — бонус
+  { pattern: /производств.*сиз|сиз.*производств/i, points: 3 },
+];
+
+// Thresholds
+const SCORE_THRESHOLD_DEFAULT    = 3;
+const SCORE_THRESHOLD_COMPETITOR = 2; // lower bar for competitor sources
+
+const MAX_SOURCES    = 10;
 const MAX_CANDIDATES = 20;
 
 interface RawCandidate {
@@ -16,7 +44,10 @@ interface RawCandidate {
   url: string;
   title: string;
   reason: string;
+  relevanceScore: number;
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function extractLinks(html: string, baseUrl: string): Array<{ href: string; text: string }> {
   const links: Array<{ href: string; text: string }> = [];
@@ -36,13 +67,28 @@ function extractLinks(html: string, baseUrl: string): Array<{ href: string; text
   return links;
 }
 
-function matchedKeyword(href: string, text: string): string | null {
+/** Stage 1: at least one positive keyword in href or title */
+function firstMatchedKeyword(href: string, text: string): string | null {
   const combined = (href + ' ' + text).toLowerCase();
-  for (const kw of KEYWORDS) {
+  for (const kw of POSITIVE_KEYWORDS) {
     if (combined.includes(kw)) return kw;
   }
   return null;
 }
+
+/** Stage 2: any negative keyword in title → discard */
+function isNegative(title: string): boolean {
+  const lower = title.toLowerCase();
+  return NEGATIVE_KEYWORDS.some(nk => lower.includes(nk));
+}
+
+/** Stage 3: sum of all matching score rules against href + title */
+function calcScore(href: string, title: string): number {
+  const combined = href + ' ' + title;
+  return SCORE_RULES.reduce((sum, rule) => sum + (rule.pattern.test(combined) ? rule.points : 0), 0);
+}
+
+// ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   let sources: Source[];
@@ -57,12 +103,14 @@ export async function POST(request: NextRequest) {
   }
 
   const activeSources = sources.filter(s => s.active).slice(0, MAX_SOURCES);
-  const existingSet = new Set(existingUrls);
-  const seenUrls = new Set<string>();
+  const existingSet   = new Set(existingUrls);
+  const seenUrls      = new Set<string>();
   const candidates: RawCandidate[] = [];
 
-  let totalLinks = 0;
-  let filtered = 0;
+  let totalLinks     = 0;
+  let passedStage1   = 0;   // survived positive keyword check
+  let passedStage2   = 0;   // survived negative keyword check
+  let passedStage3   = 0;   // survived score threshold (= final candidates)
   let sourcesScanned = 0;
 
   for (const source of activeSources) {
@@ -90,14 +138,28 @@ export async function POST(request: NextRequest) {
       const links = extractLinks(html, source.url);
       totalLinks += links.length;
 
+      const scoreThreshold = source.type === 'competitor'
+        ? SCORE_THRESHOLD_COMPETITOR
+        : SCORE_THRESHOLD_DEFAULT;
+
       for (const { href, text } of links) {
         if (candidates.length >= MAX_CANDIDATES) break;
         if (seenUrls.has(href) || existingSet.has(href)) continue;
 
-        const kw = matchedKeyword(href, text);
+        // Stage 1: positive keyword gate
+        const kw = firstMatchedKeyword(href, text);
         if (!kw) continue;
+        passedStage1++;
 
-        filtered++;
+        // Stage 2: negative keyword filter (title only)
+        if (isNegative(text)) continue;
+        passedStage2++;
+
+        // Stage 3: relevance score threshold
+        const score = calcScore(href, text);
+        if (score < scoreThreshold) continue;
+        passedStage3++;
+
         seenUrls.add(href);
         candidates.push({
           sourceId: source.id,
@@ -105,6 +167,7 @@ export async function POST(request: NextRequest) {
           url: href,
           title: text || href,
           reason: `Совпадение: «${kw}»`,
+          relevanceScore: score,
         });
       }
     } catch {
@@ -114,6 +177,11 @@ export async function POST(request: NextRequest) {
 
   return Response.json({
     candidates,
-    stats: { sourcesScanned, totalLinks, filtered },
+    stats: {
+      sourcesScanned,
+      totalLinks,
+      filtered: passedStage3,
+      debug: { passedStage1, passedStage2, passedStage3 },
+    },
   });
 }

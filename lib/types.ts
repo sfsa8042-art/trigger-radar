@@ -23,6 +23,7 @@ export interface Candidate {
   reason: string;
   detectedAt: string;
   status: CandidateStatus;
+  relevanceScore: number;
 }
 export type EventImportance = 'critical' | 'high' | 'medium' | 'low';
 

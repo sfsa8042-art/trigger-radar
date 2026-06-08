@@ -203,7 +203,7 @@ export default function TriggerRadar() {
       // Merge new candidates (deduplicate by URL)
       const existingUrlSet = new Set(candidates.map(c => c.url));
       const rawCandidates = data.candidates as Array<{
-        sourceId: string; sourceName: string; url: string; title: string; reason: string;
+        sourceId: string; sourceName: string; url: string; title: string; reason: string; relevanceScore: number;
       }>;
 
       const fresh: Candidate[] = rawCandidates
@@ -215,6 +215,7 @@ export default function TriggerRadar() {
           url: rc.url,
           title: rc.title,
           reason: rc.reason,
+          relevanceScore: rc.relevanceScore,
           detectedAt: now,
           status: 'new' as const,
         }));

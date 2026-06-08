@@ -20,6 +20,12 @@ export default function CandidateInbox({ candidates, analyzingId, onAnalyze, onI
 
   const truncate = (str: string, n: number) => str.length > n ? str.slice(0, n) + '…' : str;
 
+  const scoreBadge = (score: number) => {
+    if (score >= 8) return 'bg-emerald-100 text-emerald-700';
+    if (score >= 5) return 'bg-amber-100 text-amber-700';
+    return 'bg-gray-100 text-gray-500';
+  };
+
   if (candidates.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-dashed border-gray-200 p-10 text-center">
@@ -56,7 +62,12 @@ export default function CandidateInbox({ candidates, analyzingId, onAnalyze, onI
                   <p className="text-sm text-gray-900 font-medium leading-snug mb-1">
                     {truncate(candidate.title, 120)}
                   </p>
-                  <p className="text-xs text-blue-600 mb-1">{candidate.reason}</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-xs text-blue-600">{candidate.reason}</p>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${scoreBadge(candidate.relevanceScore)}`}>
+                      score {candidate.relevanceScore}
+                    </span>
+                  </div>
                   <a
                     href={candidate.url}
                     target="_blank"
