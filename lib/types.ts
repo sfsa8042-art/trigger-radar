@@ -1,4 +1,29 @@
 export type EventCategory = 'news' | 'tender' | 'competitor' | 'regulation' | 'other';
+export type SourceType = 'competitor' | 'tender' | 'regulation' | 'media' | 'material' | 'supplier' | 'other';
+export type SourcePriority = 'high' | 'medium' | 'low';
+export type CandidateStatus = 'new' | 'ignored' | 'analyzed';
+
+export interface Source {
+  id: string;
+  name: string;
+  url: string;
+  type: SourceType;
+  active: boolean;
+  priority: SourcePriority;
+  createdAt: string;
+  lastScannedAt?: string;
+}
+
+export interface Candidate {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  url: string;
+  title: string;
+  reason: string;
+  detectedAt: string;
+  status: CandidateStatus;
+}
 export type EventImportance = 'critical' | 'high' | 'medium' | 'low';
 
 export interface AvangardImpact {
