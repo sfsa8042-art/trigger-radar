@@ -3,10 +3,20 @@
 import { useState } from 'react';
 import type { Source, SourceType, SourcePriority } from '@/lib/types';
 
+interface SourceScanStat {
+  sourceName: string;
+  extractedLinks: number;
+  positiveMatches: number;
+  afterNegativeFilter: number;
+  finalCandidates: number;
+  error?: string;
+}
+
 interface ScanStats {
   sourcesScanned: number;
   totalLinks: number;
   filtered: number;
+  perSource?: SourceScanStat[];
 }
 
 interface SourcesPanelProps {
@@ -122,12 +132,48 @@ export default function SourcesPanel({
 
       {/* Scan stats */}
       {scanStats && !scanning && (
-        <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 text-xs text-blue-700 flex flex-wrap gap-4">
-          <span>Источников проверено: <strong>{scanStats.sourcesScanned}</strong></span>
-          <span>Ссылок извлечено: <strong>{scanStats.totalLinks}</strong></span>
-          <span>Прошло фильтр: <strong>{scanStats.filtered}</strong></span>
-          {newCandidateCount > 0 && (
-            <span className="text-blue-800 font-medium">Новых кандидатов добавлено: {newCandidateCount}</span>
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+          {/* Summary row */}
+          <div className="flex flex-wrap gap-4 text-xs text-blue-700">
+            <span>Проверено источников: <strong>{scanStats.sourcesScanned}</strong></span>
+            <span>Ссылок извлечено: <strong>{scanStats.totalLinks}</strong></span>
+            <span>Финальных кандидатов: <strong>{scanStats.filtered}</strong></span>
+            {newCandidateCount > 0 && (
+              <span className="text-blue-800 font-semibold">Добавлено новых: {newCandidateCount}</span>
+            )}
+          </div>
+          {/* Per-source breakdown */}
+          {scanStats.perSource && scanStats.perSource.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="text-blue-500 border-b border-blue-100">
+                    <th className="text-left py-1 pr-3 font-medium">Источник</th>
+                    <th className="text-right py-1 px-2 font-medium">Ссылок</th>
+                    <th className="text-right py-1 px-2 font-medium">+Keywords</th>
+                    <th className="text-right py-1 px-2 font-medium">−Noise</th>
+                    <th className="text-right py-1 pl-2 font-medium">Итого</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scanStats.perSource.map((s, i) => (
+                    <tr key={i} className="border-b border-blue-50 last:border-0">
+                      <td className="py-1 pr-3 text-blue-800 font-medium truncate max-w-[140px]">
+                        {s.error ? (
+                          <span className="text-red-500" title={s.error}>{s.sourceName} ✕</span>
+                        ) : s.sourceName}
+                      </td>
+                      <td className="text-right py-1 px-2 text-blue-600">{s.extractedLinks}</td>
+                      <td className="text-right py-1 px-2 text-blue-600">{s.positiveMatches}</td>
+                      <td className="text-right py-1 px-2 text-blue-600">{s.afterNegativeFilter}</td>
+                      <td className={`text-right py-1 pl-2 font-semibold ${s.finalCandidates > 0 ? 'text-blue-800' : 'text-blue-400'}`}>
+                        {s.finalCandidates}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

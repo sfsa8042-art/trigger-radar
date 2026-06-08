@@ -24,10 +24,20 @@ const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: 'other', label: 'Прочее' },
 ];
 
+interface SourceScanStat {
+  sourceName: string;
+  extractedLinks: number;
+  positiveMatches: number;
+  afterNegativeFilter: number;
+  finalCandidates: number;
+  error?: string;
+}
+
 interface ScanStats {
   sourcesScanned: number;
   totalLinks: number;
   filtered: number;
+  perSource?: SourceScanStat[];
 }
 
 function loadJson<T>(key: string): T | null {
