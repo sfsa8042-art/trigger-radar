@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { TriggerEvent, EventImportance, AvangardDirection, ImpactLevel } from '@/lib/types';
+import CompetitorWatch from './CompetitorWatch';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -99,25 +100,6 @@ function getTopActions(events: TriggerEvent[], n = 5) {
     .map(e => ({ action: e.suggestedAction!, title: e.title, importance: e.importance ?? 'medium' }));
 }
 
-function getCompetitorMatrix(events: TriggerEvent[]) {
-  const map = new Map<string, {
-    count: number;
-    maxThreat: EventImportance;
-    overlap: Set<AvangardDirection>;
-    events: TriggerEvent[];
-  }>();
-  for (const e of events.filter(ev => ev.category === 'competitor' && ev.competitorName)) {
-    const name = e.competitorName!;
-    if (!map.has(name)) map.set(name, { count: 0, maxThreat: 'low', overlap: new Set(), events: [] });
-    const entry = map.get(name)!;
-    entry.count++;
-    entry.events.push(e);
-    const threat = e.competitorIntel?.threatLevel ?? e.avangardImpact?.level ?? 'low';
-    if (IMPACT_ORDER[threat] > IMPACT_ORDER[entry.maxThreat]) entry.maxThreat = threat;
-    for (const dir of e.competitorIntel?.overlap ?? []) entry.overlap.add(dir);
-  }
-  return [...map.entries()].sort((a, b) => IMPACT_ORDER[b[1].maxThreat] - IMPACT_ORDER[a[1].maxThreat]);
-}
 
 function getBizImpactMatrix(events: TriggerEvent[]) {
   const result: Record<string, Record<ImpactLevel, number>> = {};
@@ -254,45 +236,6 @@ function SectionSummary({ events }: { events: TriggerEvent[] }) {
 // helper used in both columns
 function getTopThreatsOrOpps(events: TriggerEvent[], key: 'threats' | 'opportunities') {
   return getTopItems(events, key, 5);
-}
-
-// ── Section: Competitor Intelligence ─────────────────────────────────────────
-
-function SectionCompetitor({ events }: { events: TriggerEvent[] }) {
-  const matrix = getCompetitorMatrix(events);
-  return (
-    <div>
-      <SectionHeader title="Competitor Intelligence" count={matrix.length} />
-      {matrix.length === 0
-        ? <EmptyState label="Нет событий по конкурентам" />
-        : <div className="space-y-3">
-            {matrix.map(([name, data]) => (
-              <div key={name} className="bg-white border border-gray-200 rounded-xl p-4">
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-gray-900">{name}</span>
-                    <span className="text-xs text-gray-400">{data.count} сигн.</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Threat</span>
-                    <ImpactBadge level={data.maxThreat} />
-                  </div>
-                </div>
-                {data.overlap.size > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {[...data.overlap].map(dir => (
-                      <span key={dir} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
-                        {DIR_LABEL[dir]}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-      }
-    </div>
-  );
 }
 
 // ── Section: Tender Intelligence ──────────────────────────────────────────────
@@ -560,7 +503,7 @@ export default function AnalyticsPanel({ events }: AnalyticsPanelProps) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         {activeSection === 'summary'    && <SectionSummary    events={events} />}
-        {activeSection === 'competitor' && <SectionCompetitor events={events} />}
+        {activeSection === 'competitor' && <CompetitorWatch events={events} />}
         {activeSection === 'tender'     && <SectionTender     events={events} />}
         {activeSection === 'regulation' && <SectionRegulation events={events} />}
         {activeSection === 'materials'  && <SectionMaterials  events={events} />}
