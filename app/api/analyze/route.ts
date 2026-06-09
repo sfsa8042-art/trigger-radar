@@ -1,6 +1,7 @@
 import { type NextRequest } from 'next/server';
 import { callGemini } from '@/lib/gemini';
 import { formatCompanyContext } from '@/lib/company';
+import { calcExpiresAt } from '@/lib/eventLifecycle';
 import type {
   EventCategory, EventImportance, AvangardImpact, EvidenceBlock, AnalyticsEvidence,
   ImpactLevel, AvangardDirection, BusinessImpact, CompetitorIntel,
@@ -468,6 +469,8 @@ chemicals=химия, energy=энергетика.`;
         ? String(parsed.businessImpactReason)
         : undefined,
       competitorIntel,
+      status: 'active' as const,
+      expiresAt: calcExpiresAt(category, new Date().toISOString()),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Неизвестная ошибка';

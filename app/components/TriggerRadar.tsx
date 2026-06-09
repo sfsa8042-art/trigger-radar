@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { TriggerEvent, EventCategory, Source, Candidate } from '@/lib/types';
 import { buildDefaultSources } from '@/lib/defaultSources';
+import { archiveExpiredEvents, isActive } from '@/lib/eventLifecycle';
 import EventCard from './EventCard';
 import SourcesPanel from './SourcesPanel';
 import CandidateInbox from './CandidateInbox';
@@ -14,6 +15,7 @@ const CANDIDATES_KEY = 'trigger-radar-candidates';
 
 type Tab = 'events' | 'sources' | 'candidates' | 'analytics';
 type FilterType = 'all' | 'marked' | EventCategory;
+type StatusFilter = 'active' | 'archived' | 'all';
 
 const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
   { value: 'all', label: 'Все' },
@@ -68,6 +70,8 @@ export default function TriggerRadar() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
+  const [justArchivedCount, setJustArchivedCount] = useState(0);
   const [brief, setBrief] = useState<string | null>(null);
   const [generatingBrief, setGeneratingBrief] = useState(false);
   const [briefError, setBriefError] = useState<string | null>(null);
@@ -86,14 +90,22 @@ export default function TriggerRadar() {
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedEvents = loadJson<TriggerEvent[]>(EVENTS_KEY) ?? [];
+    const raw = loadJson<TriggerEvent[]>(EVENTS_KEY) ?? [];
     const storedCandidates = loadJson<Candidate[]>(CANDIDATES_KEY) ?? [];
     let storedSources = loadJson<Source[]>(SOURCES_KEY);
     if (!storedSources) {
       storedSources = buildDefaultSources();
       saveJson(SOURCES_KEY, storedSources);
     }
-    setEvents(storedEvents);
+
+    // Archive expired events on startup (also patches missing expiresAt for old events)
+    const { updated, archivedCount } = archiveExpiredEvents(raw);
+    if (archivedCount > 0) {
+      saveJson(EVENTS_KEY, updated);
+      setJustArchivedCount(archivedCount);
+    }
+
+    setEvents(updated);
     setSources(storedSources);
     setCandidates(storedCandidates);
     setHydrated(true);
@@ -145,7 +157,8 @@ export default function TriggerRadar() {
     persistEvents(events.filter(e => e.id !== id));
 
   const handleGenerateBrief = async () => {
-    const marked = events.filter(e => e.markedForBrief);
+    // Only active events go into the brief — archived ones are silently excluded
+    const marked = events.filter(e => e.markedForBrief && isActive(e));
     if (marked.length === 0 || generatingBrief) return;
     setGeneratingBrief(true);
     setBrief(null);
@@ -268,20 +281,33 @@ export default function TriggerRadar() {
     persistCandidates(candidates.map(c => c.id === id ? { ...c, status: 'ignored' } : c));
 
   // Derived
-  const criticalHighCount = events.filter(
+  const activeEvents   = events.filter(isActive);
+  const archivedEvents = events.filter(e => !isActive(e));
+
+  const criticalHighCount = activeEvents.filter(
     e => e.avangardImpact?.level === 'critical' || e.avangardImpact?.level === 'high'
   ).length;
-  const markedCount = events.filter(e => e.markedForBrief).length;
+
+  // markedCount only counts active marked events (archived can't go to brief)
+  const markedCount = activeEvents.filter(e => e.markedForBrief).length;
   const newCandidateCount = candidates.filter(c => c.status === 'new').length;
-  const filteredEvents = events.filter(e => {
+
+  // Base pool for the current status filter
+  const statusPool =
+    statusFilter === 'active'   ? activeEvents :
+    statusFilter === 'archived' ? archivedEvents :
+    events;
+
+  const filteredEvents = statusPool.filter(e => {
     if (filter === 'all') return true;
     if (filter === 'marked') return e.markedForBrief;
     return e.category === filter;
   });
+
   const filterCount = (f: FilterType): number => {
-    if (f === 'all') return events.length;
-    if (f === 'marked') return markedCount;
-    return events.filter(e => e.category === f).length;
+    if (f === 'all') return statusPool.length;
+    if (f === 'marked') return statusPool.filter(e => e.markedForBrief).length;
+    return statusPool.filter(e => e.category === f).length;
   };
 
   if (!hydrated) return <div className="min-h-screen bg-gray-50" />;
@@ -339,6 +365,24 @@ export default function TriggerRadar() {
         {/* ── Events Tab ── */}
         {tab === 'events' && (
           <>
+            {/* Archive notification banner */}
+            {justArchivedCount > 0 && (
+              <div className="mb-4 flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2 text-sm text-amber-800">
+                  <svg className="w-4 h-4 flex-shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8m-9 4v4m4-4v4" />
+                  </svg>
+                  <span>Автоархивировано <strong>{justArchivedCount}</strong> устаревших {justArchivedCount === 1 ? 'событие' : justArchivedCount < 5 ? 'события' : 'событий'}</span>
+                </div>
+                <button
+                  onClick={() => { setJustArchivedCount(0); setStatusFilter('archived'); }}
+                  className="text-xs font-medium text-amber-700 hover:text-amber-900 underline underline-offset-2 flex-shrink-0"
+                >
+                  Показать архив
+                </button>
+              </div>
+            )}
+
             {/* URL Input */}
             <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 mb-6">
               <div className="flex gap-2 sm:gap-3">
@@ -383,7 +427,35 @@ export default function TriggerRadar() {
             {/* Main Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 min-w-0">
-                {/* Filters */}
+                {/* Status filter + counters */}
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+                    {(
+                      [
+                        { value: 'active',   label: 'Активные', count: activeEvents.length },
+                        { value: 'archived', label: 'Архив',    count: archivedEvents.length },
+                        { value: 'all',      label: 'Все',      count: events.length },
+                      ] as { value: StatusFilter; label: string; count: number }[]
+                    ).map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setStatusFilter(opt.value)}
+                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                          statusFilter === opt.value
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {opt.label}
+                        <span className={`text-[10px] font-bold ${statusFilter === opt.value ? 'text-gray-600' : 'text-gray-400'}`}>
+                          {opt.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Category Filters */}
                 <div className="flex flex-wrap gap-1.5 mb-4">
                   {FILTER_OPTIONS.map(({ value, label }) => {
                     const count = filterCount(value);
@@ -546,7 +618,7 @@ export default function TriggerRadar() {
 
         {/* ── Analytics Tab ── */}
         {tab === 'analytics' && (
-          <AnalyticsPanel events={events} />
+          <AnalyticsPanel events={activeEvents} />
         )}
       </main>
     </div>

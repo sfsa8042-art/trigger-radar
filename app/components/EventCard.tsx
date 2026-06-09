@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { TriggerEvent, EventCategory, EventImportance, EvidenceBlock, ImpactLevel, AvangardDirection } from '@/lib/types';
+import { expiryLabel } from '@/lib/eventLifecycle';
 
 const DIR_LABEL: Record<AvangardDirection, string> = {
   workwear:          'Спецодежда',
@@ -169,6 +170,9 @@ export default function EventCard({ event, onToggleMark, onDelete }: EventCardPr
     year: 'numeric',
   });
 
+  const archived = event.status === 'archived';
+  const expiry   = expiryLabel(event);
+
   const domain = (() => {
     try {
       return new URL(event.url).hostname.replace('www.', '');
@@ -197,7 +201,9 @@ export default function EventCard({ event, onToggleMark, onDelete }: EventCardPr
   return (
     <article
       className={`bg-white rounded-xl border transition-all ${
-        event.markedForBrief
+        archived
+          ? 'border-gray-100 opacity-60'
+          : event.markedForBrief
           ? 'border-blue-300 shadow-sm shadow-blue-50'
           : 'border-gray-200 hover:border-gray-300'
       }`}
@@ -278,6 +284,25 @@ export default function EventCard({ event, onToggleMark, onDelete }: EventCardPr
                   <span className="text-gray-200">·</span>
                   <span className="text-xs text-gray-400 italic">{event.sourceType}</span>
                 </>
+              )}
+
+              {archived && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-400 uppercase tracking-wide">
+                  Архив
+                </span>
+              )}
+
+              {!archived && expiry && (
+                <span
+                  className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                    expiry.level === 'ok'   ? 'bg-emerald-50 text-emerald-600' :
+                    expiry.level === 'soon' ? 'bg-amber-50 text-amber-600' :
+                                             'bg-gray-100 text-gray-400'
+                  }`}
+                  title="Дата истечения события"
+                >
+                  {expiry.text}
+                </span>
               )}
             </div>
 

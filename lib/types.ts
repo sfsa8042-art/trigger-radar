@@ -101,4 +101,8 @@ export interface TriggerEvent {
   businessImpact?:       BusinessImpact;
   businessImpactReason?: string;
   competitorIntel?:      CompetitorIntel;
+
+  // Phase 4 fields — all optional for backward compatibility
+  status?:    'active' | 'archived';
+  expiresAt?: string; // ISO date string
 }
