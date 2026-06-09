@@ -6,12 +6,13 @@ import { buildDefaultSources } from '@/lib/defaultSources';
 import EventCard from './EventCard';
 import SourcesPanel from './SourcesPanel';
 import CandidateInbox from './CandidateInbox';
+import AnalyticsPanel from './AnalyticsPanel';
 
 const EVENTS_KEY = 'trigger-radar-events';
 const SOURCES_KEY = 'trigger-radar-sources';
 const CANDIDATES_KEY = 'trigger-radar-candidates';
 
-type Tab = 'events' | 'sources' | 'candidates';
+type Tab = 'events' | 'sources' | 'candidates' | 'analytics';
 type FilterType = 'all' | 'marked' | EventCategory;
 
 const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
@@ -267,6 +268,9 @@ export default function TriggerRadar() {
     persistCandidates(candidates.map(c => c.id === id ? { ...c, status: 'ignored' } : c));
 
   // Derived
+  const criticalHighCount = events.filter(
+    e => e.avangardImpact?.level === 'critical' || e.avangardImpact?.level === 'high'
+  ).length;
   const markedCount = events.filter(e => e.markedForBrief).length;
   const newCandidateCount = candidates.filter(c => c.status === 'new').length;
   const filteredEvents = events.filter(e => {
@@ -282,10 +286,11 @@ export default function TriggerRadar() {
 
   if (!hydrated) return <div className="min-h-screen bg-gray-50" />;
 
-  const TABS: { value: Tab; label: string; count?: number }[] = [
-    { value: 'events', label: 'События', count: events.length },
-    { value: 'sources', label: 'Источники', count: sources.length },
-    { value: 'candidates', label: 'Найденные', count: newCandidateCount || undefined },
+  const TABS: { value: Tab; label: string; count?: number; alert?: boolean }[] = [
+    { value: 'events',    label: 'События',    count: events.length },
+    { value: 'sources',   label: 'Источники',  count: sources.length },
+    { value: 'candidates',label: 'Найденные',  count: newCandidateCount || undefined },
+    { value: 'analytics', label: 'Аналитика',  count: criticalHighCount || undefined, alert: criticalHighCount > 0 },
   ];
 
   return (
@@ -316,7 +321,9 @@ export default function TriggerRadar() {
                 {t.label}
                 {t.count !== undefined && t.count > 0 && (
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    tab === t.value ? 'bg-blue-200 text-blue-700' : 'bg-gray-100 text-gray-500'
+                    tab === t.value
+                      ? t.alert ? 'bg-red-200 text-red-700' : 'bg-blue-200 text-blue-700'
+                      : t.alert ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'
                   }`}>
                     {t.count}
                   </span>
@@ -535,6 +542,11 @@ export default function TriggerRadar() {
             onAnalyze={handleAnalyzeCandidate}
             onIgnore={handleIgnoreCandidate}
           />
+        )}
+
+        {/* ── Analytics Tab ── */}
+        {tab === 'analytics' && (
+          <AnalyticsPanel events={events} />
         )}
       </main>
     </div>

@@ -1,4 +1,32 @@
 export type EventCategory = 'news' | 'tender' | 'competitor' | 'regulation' | 'other';
+export type ImpactLevel = 'none' | 'low' | 'medium' | 'high';
+
+export type AvangardDirection =
+  | 'workwear'
+  | 'footwear'
+  | 'ppe'
+  | 'hi-vis'
+  | 'flame-resistant'
+  | 'antistatic'
+  | 'membranes'
+  | 'oil-gas'
+  | 'metallurgy'
+  | 'construction'
+  | 'chemicals'
+  | 'energy';
+
+export interface BusinessImpact {
+  sales?:       ImpactLevel;
+  procurement?: ImpactLevel;
+  production?:  ImpactLevel;
+  marketing?:   ImpactLevel;
+  product?:     ImpactLevel;
+}
+
+export interface CompetitorIntel {
+  threatLevel: EventImportance;
+  overlap:     AvangardDirection[];
+}
 export type SourceType = 'competitor' | 'tender' | 'regulation' | 'media' | 'material' | 'supplier' | 'other';
 export type SourcePriority = 'high' | 'medium' | 'low';
 export type CandidateStatus = 'new' | 'ignored' | 'analyzed';
@@ -67,4 +95,10 @@ export interface TriggerEvent {
   suggestedAction?: string;
   competitorName?: string | null;
   evidence?: AnalyticsEvidence;
+
+  // Phase 3 fields — all optional for backward compatibility
+  confidenceScore?:      number;
+  businessImpact?:       BusinessImpact;
+  businessImpactReason?: string;
+  competitorIntel?:      CompetitorIntel;
 }

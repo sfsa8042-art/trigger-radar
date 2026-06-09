@@ -1,7 +1,38 @@
 'use client';
 
 import { useState } from 'react';
-import type { TriggerEvent, EventCategory, EventImportance, EvidenceBlock } from '@/lib/types';
+import type { TriggerEvent, EventCategory, EventImportance, EvidenceBlock, ImpactLevel, AvangardDirection } from '@/lib/types';
+
+const DIR_LABEL: Record<AvangardDirection, string> = {
+  workwear:          'Спецодежда',
+  footwear:          'Спецобувь',
+  ppe:               'СИЗ',
+  'hi-vis':          'Сигнальная одежда',
+  'flame-resistant': 'Огнестойкость',
+  antistatic:        'Антистатика',
+  membranes:         'Мембраны',
+  'oil-gas':         'Нефтегаз',
+  metallurgy:        'Металлургия',
+  construction:      'Строительство',
+  chemicals:         'Химия',
+  energy:            'Энергетика',
+};
+
+const IL_BADGE: Record<ImpactLevel, string> = {
+  high:   'bg-red-100 text-red-700',
+  medium: 'bg-amber-100 text-amber-700',
+  low:    'bg-gray-100 text-gray-500',
+  none:   'hidden',
+};
+const IL_LABEL: Record<ImpactLevel, string> = { high: 'High', medium: 'Med', low: 'Low', none: '' };
+
+const BIZ_DIMS: Array<{ key: keyof NonNullable<TriggerEvent['businessImpact']>; label: string }> = [
+  { key: 'sales',       label: 'Продажи' },
+  { key: 'procurement', label: 'Закупки' },
+  { key: 'production',  label: 'Производство' },
+  { key: 'marketing',   label: 'Маркетинг' },
+  { key: 'product',     label: 'Продукт' },
+];
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   news: 'Новости',
@@ -158,7 +189,9 @@ export default function EventCard({ event, onToggleMark, onDelete }: EventCardPr
     event.opportunities?.length ||
     event.threats?.length ||
     event.suggestedAction ||
-    event.signals?.length
+    event.signals?.length ||
+    (event.businessImpact && Object.keys(event.businessImpact).length > 0) ||
+    event.competitorIntel?.overlap.length
   );
 
   return (
@@ -206,6 +239,21 @@ export default function EventCard({ event, onToggleMark, onDelete }: EventCardPr
                     <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
                   </svg>
                   А · {IMPORTANCE_LABELS[event.avangardImpact.level]}
+                </span>
+              )}
+
+              {event.confidenceScore !== undefined && (
+                <span
+                  className={`inline-block text-xs font-medium px-2 py-0.5 rounded border ${
+                    event.confidenceScore >= 70
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      : event.confidenceScore >= 50
+                      ? 'bg-yellow-50 text-yellow-700 border-yellow-100'
+                      : 'bg-red-50 text-red-600 border-red-100'
+                  }`}
+                  title="Уверенность модели в анализе"
+                >
+                  {event.confidenceScore >= 70 ? '🟢' : event.confidenceScore >= 50 ? '🟡' : '🔴'} {event.confidenceScore}%
                 </span>
               )}
 
@@ -295,6 +343,39 @@ export default function EventCard({ event, onToggleMark, onDelete }: EventCardPr
                       evidence={event.evidence?.threats}
                       color="red"
                     />
+                  </Section>
+                )}
+
+                {/* Phase 3: Business Impact */}
+                {event.businessImpact && Object.keys(event.businessImpact).length > 0 && (
+                  <Section title="Business Impact">
+                    {event.businessImpactReason && (
+                      <p className="text-xs text-gray-500 mb-2 leading-relaxed">{event.businessImpactReason}</p>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {BIZ_DIMS.map(({ key, label }) => {
+                        const level = event.businessImpact![key];
+                        if (!level || level === 'none') return null;
+                        return (
+                          <span key={key} className={`text-[10px] font-semibold px-2 py-0.5 rounded ${IL_BADGE[level]}`}>
+                            {label}: {IL_LABEL[level]}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </Section>
+                )}
+
+                {/* Phase 3: Competitor Intel */}
+                {event.competitorIntel && event.competitorIntel.overlap.length > 0 && (
+                  <Section title="Overlap с Авангардом">
+                    <div className="flex flex-wrap gap-1.5">
+                      {event.competitorIntel.overlap.map(dir => (
+                        <span key={dir} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
+                          {DIR_LABEL[dir]}
+                        </span>
+                      ))}
+                    </div>
                   </Section>
                 )}
 
