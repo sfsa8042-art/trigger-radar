@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { TriggerEvent, EventCategory, Source, Candidate } from '@/lib/types';
 import { buildDefaultSources } from '@/lib/defaultSources';
 import { archiveExpiredEvents, isActive } from '@/lib/eventLifecycle';
+import { loadDemoData, DEMO_EVENTS } from '@/lib/demoData';
 import EventCard from './EventCard';
 import SourcesPanel from './SourcesPanel';
 import CandidateInbox from './CandidateInbox';
@@ -125,6 +126,11 @@ export default function TriggerRadar() {
   const persistCandidates = (updated: Candidate[]) => {
     setCandidates(updated);
     saveJson(CANDIDATES_KEY, updated);
+  };
+
+  const handleLoadDemo = () => {
+    loadDemoData();
+    persistEvents(DEMO_EVENTS);
   };
 
   const handleAnalyze = async () => {
@@ -460,6 +466,21 @@ export default function TriggerRadar() {
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                   <span>{error}</span>
+                </div>
+              )}
+
+              {events.length === 0 && (
+                <div className="mt-3 flex items-center gap-3 pt-3 border-t border-gray-100">
+                  <span className="text-xs text-gray-400">Или посмотрите как это работает:</span>
+                  <button
+                    onClick={handleLoadDemo}
+                    className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Загрузить демо-пример
+                  </button>
                 </div>
               )}
             </div>
