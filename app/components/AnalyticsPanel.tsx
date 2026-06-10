@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { TriggerEvent, EventImportance, AvangardDirection, ImpactLevel } from '@/lib/types';
 import CompetitorWatch from './CompetitorWatch';
+import TrendEngine from './TrendEngine';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -50,17 +51,6 @@ const BIZ_DIMS: Array<{ key: keyof NonNullable<TriggerEvent['businessImpact']>; 
   { key: 'product',     label: 'Продукт' },
 ];
 
-const TREND_TOPICS = [
-  { key: 'membranes',     label: 'Мембранные ткани',  patterns: ['мембран'] },
-  { key: 'antistatic',    label: 'Антистатика',       patterns: ['антистат'] },
-  { key: 'flame',         label: 'Огнестойкость',     patterns: ['огнестойк', 'огнезащ'] },
-  { key: 'footwear',      label: 'Спецобувь',         patterns: ['спецобув'] },
-  { key: 'tenders',       label: 'Тендеры',           patterns: ['тендер', 'закупк'] },
-  { key: 'localization',  label: 'Локализация',       patterns: ['локализ', 'реестр минпром'] },
-  { key: 'production',    label: 'Производство',      patterns: ['производств'] },
-  { key: 'workwear',      label: 'Спецодежда',        patterns: ['спецодежда'] },
-  { key: 'ppe',           label: 'СИЗ',               patterns: ['\bсиз\b', 'средства защиты'] },
-];
 
 const NAV_ITEMS = [
   { id: 'summary',     label: 'Executive Summary' },
@@ -114,17 +104,6 @@ function getBizImpactMatrix(events: TriggerEvent[]) {
   return result;
 }
 
-function getTrends(events: TriggerEvent[]) {
-  return TREND_TOPICS.map(topic => {
-    const count = events.filter(e => {
-      const haystack = [e.title, e.summary, e.whatHappened ?? '', e.whyItMattersForAvangard ?? '']
-        .join(' ')
-        .toLowerCase();
-      return topic.patterns.some(p => new RegExp(p, 'i').test(haystack));
-    }).length;
-    return { ...topic, count };
-  }).filter(t => t.count > 0).sort((a, b) => b.count - a.count);
-}
 
 function getMaterialsEvents(events: TriggerEvent[]) {
   const MATERIAL_PATTERNS = /мембран|антистат|огнестойк|огнезащ|арамид|ткань|нити|волокн/i;
@@ -415,36 +394,6 @@ function SectionBizImpact({ events }: { events: TriggerEvent[] }) {
   );
 }
 
-// ── Section: Trend Detection ──────────────────────────────────────────────────
-
-function SectionTrends({ events }: { events: TriggerEvent[] }) {
-  const trends = getTrends(events);
-  const max = trends[0]?.count ?? 1;
-  return (
-    <div>
-      <SectionHeader title="Trend Detection" />
-      {trends.length === 0
-        ? <EmptyState label="Недостаточно событий для выявления трендов" />
-        : <div className="space-y-2.5">
-            {trends.map(t => (
-              <div key={t.key} className="flex items-center gap-3">
-                <span className="text-xs font-medium text-gray-700 w-40 flex-shrink-0">{t.label}</span>
-                <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-2 bg-blue-500 rounded-full transition-all"
-                    style={{ width: `${Math.max(8, (t.count / max) * 100)}%` }}
-                  />
-                </div>
-                <span className="text-xs font-bold text-gray-500 w-10 text-right flex-shrink-0">
-                  {t.count} {t.count === 1 ? 'событие' : t.count < 5 ? 'события' : 'событий'}
-                </span>
-              </div>
-            ))}
-          </div>
-      }
-    </div>
-  );
-}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -508,7 +457,7 @@ export default function AnalyticsPanel({ events }: AnalyticsPanelProps) {
         {activeSection === 'regulation' && <SectionRegulation events={events} />}
         {activeSection === 'materials'  && <SectionMaterials  events={events} />}
         {activeSection === 'bizimpact'  && <SectionBizImpact  events={events} />}
-        {activeSection === 'trends'     && <SectionTrends     events={events} />}
+        {activeSection === 'trends'     && <TrendEngine        events={events} />}
       </div>
     </div>
   );
