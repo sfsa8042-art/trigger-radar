@@ -53,12 +53,12 @@ const BIZ_DIMS: Array<{ key: keyof NonNullable<TriggerEvent['businessImpact']>; 
 
 
 const NAV_ITEMS = [
-  { id: 'summary',     label: 'Executive Summary' },
+  { id: 'summary',     label: 'Сводка для руководства' },
   { id: 'competitor',  label: 'Конкуренты' },
   { id: 'tender',      label: 'Тендеры' },
   { id: 'regulation',  label: 'Регуляторика' },
-  { id: 'materials',   label: 'Материалы' },
-  { id: 'bizimpact',   label: 'Business Impact' },
+  { id: 'materials',   label: 'Материалы и технологии' },
+  { id: 'bizimpact',   label: 'Влияние на бизнес' },
   { id: 'trends',      label: 'Тренды' },
 ];
 
@@ -148,7 +148,7 @@ function SectionSummary({ events }: { events: TriggerEvent[] }) {
   const actions = getTopActions(events);
   return (
     <div className="space-y-6">
-      <SectionHeader title="Executive Summary" />
+      <SectionHeader title="Сводка для руководства" />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Threats */}
         <div className="bg-red-50 border border-red-100 rounded-xl p-4">
@@ -351,9 +351,9 @@ function SectionBizImpact({ events }: { events: TriggerEvent[] }) {
   const LEVELS: ImpactLevel[] = ['high', 'medium', 'low'];
   return (
     <div>
-      <SectionHeader title="Business Impact Matrix" />
+      <SectionHeader title="Влияние на бизнес" />
       {withData === 0
-        ? <EmptyState label="Нет событий с оценкой businessImpact — проанализируйте новые URL" />
+        ? <EmptyState label="Матрица заполнится после того, как вы проанализируете несколько URL — система автоматически оценит влияние на каждую функцию бизнеса." />
         : <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <table className="w-full text-xs">
               <thead>
@@ -412,8 +412,10 @@ export default function AnalyticsPanel({ events }: AnalyticsPanelProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>
-        <p className="text-sm font-medium text-gray-700 mb-1">Нет данных для аналитики</p>
-        <p className="text-xs text-gray-400">Проанализируйте хотя бы несколько URL на вкладке «События»</p>
+        <p className="text-sm font-medium text-gray-700 mb-1">Аналитика пока пуста</p>
+        <p className="text-xs text-gray-400 max-w-xs mx-auto leading-relaxed">
+          Перейдите в «Сигналы», вставьте ссылку на новость, тендер или сайт конкурента — и система автоматически построит сводку угроз, трендов и рекомендаций.
+        </p>
       </div>
     );
   }

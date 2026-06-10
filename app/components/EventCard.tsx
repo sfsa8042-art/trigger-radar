@@ -250,14 +250,24 @@ export default function EventCard({ event, onToggleMark, onDelete }: EventCardPr
 
               {event.confidenceScore !== undefined && (
                 <span
-                  className={`inline-block text-xs font-medium px-2 py-0.5 rounded border ${
-                    event.confidenceScore >= 70
+                  className={`inline-block text-xs font-medium px-2 py-0.5 rounded border cursor-help ${
+                    event.confidenceScore >= 90
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      : event.confidenceScore >= 70
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                       : event.confidenceScore >= 50
                       ? 'bg-yellow-50 text-yellow-700 border-yellow-100'
                       : 'bg-red-50 text-red-600 border-red-100'
                   }`}
-                  title="Уверенность модели в анализе"
+                  title={
+                    event.confidenceScore >= 90
+                      ? `Уверенность: ${event.confidenceScore}% — высокая уверенность. Источник содержит достаточно данных для точного анализа.`
+                      : event.confidenceScore >= 70
+                      ? `Уверенность: ${event.confidenceScore}% — достаточно данных. Анализ надёжен, возможны незначительные неточности.`
+                      : event.confidenceScore >= 50
+                      ? `Уверенность: ${event.confidenceScore}% — частичная уверенность. Источник содержит ограниченный контекст, рекомендуется перепроверить.`
+                      : `Уверенность: ${event.confidenceScore}% — слабый сигнал. Данных мало, выводы предварительные.`
+                  }
                 >
                   {event.confidenceScore >= 70 ? '🟢' : event.confidenceScore >= 50 ? '🟡' : '🔴'} {event.confidenceScore}%
                 </span>

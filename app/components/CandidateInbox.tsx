@@ -34,8 +34,10 @@ export default function CandidateInbox({ candidates, analyzingId, onAnalyze, onI
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        <p className="text-sm font-medium text-gray-700 mb-1">Кандидатов пока нет</p>
-        <p className="text-xs text-gray-400">Нажмите «Проверить источники» на вкладке Источники</p>
+        <p className="text-sm font-medium text-gray-700 mb-1">Кандидаты появятся после сканирования</p>
+        <p className="text-xs text-gray-400 max-w-xs mx-auto leading-relaxed">
+          Перейдите в «Источники» и нажмите «Проверить источники» — система автоматически найдёт релевантные ссылки и предложит их на анализ.
+        </p>
       </div>
     );
   }

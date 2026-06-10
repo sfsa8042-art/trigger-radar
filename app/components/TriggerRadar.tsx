@@ -312,10 +312,26 @@ export default function TriggerRadar() {
 
   if (!hydrated) return <div className="min-h-screen bg-gray-50" />;
 
+  // Header stats
+  const activeCompetitorCount = [...new Set(
+    activeEvents.filter(e => e.category === 'competitor' && e.competitorName).map(e => e.competitorName!)
+  )].length;
+  const activeTrendCount = (() => {
+    // Quick count: how many of the 12 trend definitions have ≥1 matching active event
+    const TREND_PATTERNS = [
+      /антистат/i, /мембран/i, /огнестойк|огнезащ/i, /спецобув/i,
+      /\bсиз\b/i, /нефтегаз/i, /металлург/i, /строительств/i,
+      /энергетик/i, /импортозамещ|локализ/i, /сертифик|гост|\bтр\s*тс\b/i, /тендер|закупк/i,
+    ];
+    return TREND_PATTERNS.filter(p =>
+      activeEvents.some(e => p.test([e.title, e.summary, e.whatHappened ?? ''].join(' ')))
+    ).length;
+  })();
+
   const TABS: { value: Tab; label: string; count?: number; alert?: boolean }[] = [
-    { value: 'events',    label: 'События',    count: events.length },
+    { value: 'events',    label: 'Сигналы',    count: events.length },
     { value: 'sources',   label: 'Источники',  count: sources.length },
-    { value: 'candidates',label: 'Найденные',  count: newCandidateCount || undefined },
+    { value: 'candidates',label: 'Кандидаты',  count: newCandidateCount || undefined },
     { value: 'analytics', label: 'Аналитика',  count: criticalHighCount || undefined, alert: criticalHighCount > 0 },
   ];
 
@@ -323,40 +339,64 @@ export default function TriggerRadar() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6">
+          <div className="h-14 flex items-center justify-between gap-4">
+            {/* Brand */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div className="leading-tight">
+                <p className="font-semibold text-gray-900 text-sm leading-none">Авангард Аналитика</p>
+                <p className="text-[10px] text-gray-400 leading-none mt-0.5 hidden sm:block">Система рыночной и конкурентной аналитики</p>
+              </div>
             </div>
-            <span className="font-semibold text-gray-900 text-sm">Trigger Radar</span>
-            <span className="text-gray-300 hidden sm:block">|</span>
-            <span className="text-xs text-gray-400 hidden sm:block">Авангард · Профессиональная экипировка</span>
-          </div>
-          {/* Tab nav */}
-          <nav className="flex items-center gap-0.5">
-            {TABS.map(t => (
-              <button
-                key={t.value}
-                onClick={() => setTab(t.value)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  tab === t.value ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                {t.label}
-                {t.count !== undefined && t.count > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    tab === t.value
-                      ? t.alert ? 'bg-red-200 text-red-700' : 'bg-blue-200 text-blue-700'
-                      : t.alert ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {t.count}
+
+            {/* Stats pills — compact summary */}
+            {activeEvents.length > 0 && (
+              <div className="hidden md:flex items-center gap-2">
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                  Сигналов: <strong>{activeEvents.length}</strong>
+                </span>
+                {activeCompetitorCount > 0 && (
+                  <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
+                    Конкурентов: <strong>{activeCompetitorCount}</strong>
                   </span>
                 )}
-              </button>
-            ))}
-          </nav>
+                {activeTrendCount > 0 && (
+                  <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+                    Трендов: <strong>{activeTrendCount}</strong>
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Tab nav */}
+            <nav className="flex items-center gap-0.5 flex-shrink-0">
+              {TABS.map(t => (
+                <button
+                  key={t.value}
+                  onClick={() => setTab(t.value)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                    tab === t.value ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {t.label}
+                  {t.count !== undefined && t.count > 0 && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      tab === t.value
+                        ? t.alert ? 'bg-red-200 text-red-700' : 'bg-blue-200 text-blue-700'
+                        : t.alert ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {t.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -392,7 +432,7 @@ export default function TriggerRadar() {
                   value={url}
                   onChange={e => setUrl(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAnalyze(); }}
-                  placeholder="Вставьте URL новости, тендера или сайта конкурента..."
+                  placeholder="Например: technoavia.ru, consultant.ru, zakupki.gov.ru или ссылка на новый ГОСТ..."
                   className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-colors min-w-0"
                   disabled={loading}
                 />
@@ -488,15 +528,15 @@ export default function TriggerRadar() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                           </svg>
                         </div>
-                        <p className="text-sm font-semibold text-gray-900 mb-1.5">Начните мониторинг для Авангарда</p>
+                        <p className="text-sm font-semibold text-gray-900 mb-1.5">Рынок меняется каждый день</p>
                         <p className="text-xs text-gray-500 leading-relaxed mb-5">
-                          Вставьте ссылку на новость, тендер или страницу конкурента — система проанализирует источник и покажет, что это значит для конкурентоспособности Авангарда.
+                          Новые ГОСТы, тендеры на миллионы, шаги конкурентов — система автоматически анализирует источники и переводит их в конкретные выводы и рекомендации для Авангарда.
                         </p>
                         <div className="text-left space-y-3">
                           {([
-                            ['1', 'Вставьте URL выше и нажмите «Анализировать»'],
-                            ['2', 'Или перейдите в «Источники» → «Проверить источники»'],
-                            ['3', 'Отметьте важные события и создайте бриф'],
+                            ['1', 'Вставьте URL выше — получите анализ за 10 секунд'],
+                            ['2', 'Или перейдите в «Источники» → запустите автосканирование'],
+                            ['3', 'Отметьте важные сигналы — получите готовый еженедельный бриф'],
                           ] as [string, string][]).map(([num, text]) => (
                             <div key={num} className="flex items-start gap-2.5">
                               <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{num}</span>
