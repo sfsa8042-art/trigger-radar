@@ -7,6 +7,12 @@ import type { TriggerEvent } from '@/lib/types';
 
 function truncate(s: string, n: number) { return s.length > n ? s.slice(0, n) + '…' : s; }
 
+function strengthLabel(strength: number): string {
+  if (strength >= 70) return 'сильная связь';
+  if (strength >= 40) return 'умеренная связь';
+  return 'слабая связь';
+}
+
 const SEVERITY_CONFIG = {
   critical:  { label: '🔴 Критический отчёт', cls: 'bg-red-50 border-red-200 text-red-700' },
   attention: { label: '🟡 Требует внимания',  cls: 'bg-amber-50 border-amber-200 text-amber-700' },
@@ -49,10 +55,10 @@ function CorrelationChip({ corrId, snapshots }: { corrId: string; snapshots: Cor
   if (!cluster) return null;
   return (
     <span
-      title={cluster.insight}
+      title={`${cluster.insight} (сила: ${cluster.strength})`}
       className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100"
     >
-      🔗 {truncate(cluster.label, 35)} · {cluster.strength}
+      🔗 {truncate(cluster.label, 35)} · {strengthLabel(cluster.strength)}
     </span>
   );
 }
@@ -88,10 +94,13 @@ function TezisBlock({
           </div>
         )}
         {(tezis.evidenceQuotes?.length ?? 0) > 0 && (
-          <div className="mt-2 pl-2 border-l-2 border-gray-100 space-y-0.5">
-            {tezis.evidenceQuotes!.map((q, i) => (
-              <p key={i} className="text-[10px] text-gray-400 italic leading-snug">&ldquo;{q}&rdquo;</p>
-            ))}
+          <div className="mt-2 pl-2 border-l-2 border-gray-100">
+            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Из источника:</p>
+            <div className="space-y-0.5">
+              {tezis.evidenceQuotes!.map((q, i) => (
+                <p key={i} className="text-[10px] text-gray-400 italic leading-snug">&ldquo;{q}&rdquo;</p>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -156,8 +165,12 @@ function ActionBlock({
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-gray-900 leading-snug mb-1">{action.action}</p>
         <div className="flex flex-wrap gap-2 text-[10px] mb-1">
-          {action.responsible && (
+          {action.responsible ? (
             <span className="font-medium text-gray-600">{action.responsible}</span>
+          ) : (
+            <span className="font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+              ⚠ Ответственный не назначен
+            </span>
           )}
           {action.deadline && (
             <span className="text-amber-600 font-medium">до {action.deadline}</span>

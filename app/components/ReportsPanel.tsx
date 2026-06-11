@@ -163,8 +163,15 @@ export default function ReportsPanel({ activeEvents, markedEvents, onReportCount
                     <p className={`text-[11px] font-medium leading-snug ${activeId === r.id ? 'text-blue-700' : 'text-gray-700'}`}>
                       {r.title}
                     </p>
-                    <p className="text-[10px] text-gray-400">
-                      {r.eventCount} событий · {formatShortDate(r.generatedAt)}
+                    {r.report.headline && (
+                      <p className="text-[10px] text-gray-500 leading-snug mt-0.5 line-clamp-2">
+                        {r.report.headline.length > 60
+                          ? r.report.headline.slice(0, 60) + '…'
+                          : r.report.headline}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {r.eventCount} сигн. · {formatShortDate(r.generatedAt)}
                     </p>
                   </div>
                   <button

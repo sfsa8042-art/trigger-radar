@@ -168,13 +168,18 @@ function parseSection(
   validEventIds: Set<string>,
   validCorrIds: Set<string>,
   eventMap: Map<string, TriggerEvent>,
+  requireSource = false,
 ): ReportSection {
   if (!raw || typeof raw !== 'object') return { title: '', tezises: [] };
   const s = raw as Record<string, unknown>;
   const tezises = Array.isArray(s.tezises)
     ? s.tezises
         .map(t => enrichWithConfidence(parseTezis(t, validEventIds, validCorrIds), eventMap))
-        .filter(t => t.text.length > 0)
+        .filter(t => {
+          if (!t.text.length) return false;
+          if (requireSource && (t.sourceEventIds?.length ?? 0) === 0) return false;
+          return true;
+        })
     : [];
   const scores = tezises.map(t => t.confidenceScore).filter((n): n is number => n !== undefined);
   return {
@@ -241,13 +246,13 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: `Ошибка генерации отчёта: ${msg}` }, { status: 500 });
   }
 
-  // Parse sections
+  // Parse sections — require at least one valid sourceEventId per tezis
   const rawSections = Array.isArray(geminiJson.sections) ? geminiJson.sections : [];
   const sections = rawSections
-    .map(s => parseSection(s, validEventIds, validCorrIds, eventMap))
+    .map(s => parseSection(s, validEventIds, validCorrIds, eventMap, true))
     .filter(s => s.title.length > 0 && s.tezises.length > 0);
 
-  // Parse avangardImpact
+  // Parse avangardImpact — analytical section, sources optional
   const rawImpact = geminiJson.avangardImpact;
   const avangardImpactSection = parseSection(
     rawImpact && typeof rawImpact === 'object'
@@ -256,6 +261,7 @@ export async function POST(request: NextRequest) {
     validEventIds,
     validCorrIds,
     eventMap,
+    false,
   );
 
   const priorityActions = parseActions(geminiJson.priorityActions, validEventIds, validCorrIds);
