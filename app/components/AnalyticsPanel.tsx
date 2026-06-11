@@ -401,9 +401,10 @@ function SectionBizImpact({ events }: { events: TriggerEvent[] }) {
 
 interface AnalyticsPanelProps {
   events: TriggerEvent[];
+  onGenerateReport?: () => void;
 }
 
-export default function AnalyticsPanel({ events }: AnalyticsPanelProps) {
+export default function AnalyticsPanel({ events, onGenerateReport }: AnalyticsPanelProps) {
   const [activeSection, setActiveSection] = useState('summary');
 
   if (events.length === 0) {
@@ -448,6 +449,14 @@ export default function AnalyticsPanel({ events }: AnalyticsPanelProps) {
             <p className="text-[10px] text-gray-400">{events.length} событий</p>
             {criticalHighCount > 0 && (
               <p className="text-[10px] text-red-500 font-semibold">{criticalHighCount} приоритетных</p>
+            )}
+            {onGenerateReport && (
+              <button
+                onClick={onGenerateReport}
+                className="mt-2 w-full text-[10px] font-medium text-blue-600 hover:text-blue-800 text-left transition-colors"
+              >
+                → Сформировать отчёт
+              </button>
             )}
           </div>
         </div>

@@ -9,12 +9,13 @@ import EventCard from './EventCard';
 import SourcesPanel from './SourcesPanel';
 import CandidateInbox from './CandidateInbox';
 import AnalyticsPanel from './AnalyticsPanel';
+import ReportsPanel from './ReportsPanel';
 
 const EVENTS_KEY = 'trigger-radar-events';
 const SOURCES_KEY = 'trigger-radar-sources';
 const CANDIDATES_KEY = 'trigger-radar-candidates';
 
-type Tab = 'events' | 'sources' | 'candidates' | 'analytics';
+type Tab = 'events' | 'sources' | 'candidates' | 'analytics' | 'reports';
 type FilterType = 'all' | 'marked' | EventCategory;
 type StatusFilter = 'active' | 'archived' | 'all';
 
@@ -73,10 +74,7 @@ export default function TriggerRadar() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const [justArchivedCount, setJustArchivedCount] = useState(0);
-  const [brief, setBrief] = useState<string | null>(null);
-  const [generatingBrief, setGeneratingBrief] = useState(false);
-  const [briefError, setBriefError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [storedReportCount, setStoredReportCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Sources state
@@ -161,38 +159,6 @@ export default function TriggerRadar() {
 
   const deleteEvent = (id: string) =>
     persistEvents(events.filter(e => e.id !== id));
-
-  const handleGenerateBrief = async () => {
-    // Only active events go into the brief — archived ones are silently excluded
-    const marked = events.filter(e => e.markedForBrief && isActive(e));
-    if (marked.length === 0 || generatingBrief) return;
-    setGeneratingBrief(true);
-    setBrief(null);
-    setBriefError(null);
-    try {
-      const res = await fetch('/api/brief', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ events: marked }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setBriefError(data.error ?? 'Ошибка генерации брифа'); return; }
-      setBrief(data.brief);
-    } catch {
-      setBriefError('Сетевая ошибка при генерации брифа.');
-    } finally {
-      setGeneratingBrief(false);
-    }
-  };
-
-  const copyBrief = async () => {
-    if (!brief) return;
-    try {
-      await navigator.clipboard.writeText(brief);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
-  };
 
   // Sources helpers
   const handleAddSource = (seed: Omit<Source, 'id' | 'createdAt'>) => {
@@ -294,8 +260,9 @@ export default function TriggerRadar() {
     e => e.avangardImpact?.level === 'critical' || e.avangardImpact?.level === 'high'
   ).length;
 
-  // markedCount only counts active marked events (archived can't go to brief)
+  // markedCount only counts active marked events
   const markedCount = activeEvents.filter(e => e.markedForBrief).length;
+  const markedEvents = activeEvents.filter(e => e.markedForBrief);
   const newCandidateCount = candidates.filter(c => c.status === 'new').length;
 
   // Base pool for the current status filter
@@ -339,6 +306,7 @@ export default function TriggerRadar() {
     { value: 'sources',   label: 'Источники',  count: sources.length },
     { value: 'candidates',label: 'Кандидаты',  count: newCandidateCount || undefined },
     { value: 'analytics', label: 'Аналитика',  count: criticalHighCount || undefined, alert: criticalHighCount > 0 },
+    { value: 'reports',   label: 'Отчёты',     count: storedReportCount || undefined },
   ];
 
   return (
@@ -469,6 +437,19 @@ export default function TriggerRadar() {
                 </div>
               )}
 
+              {markedCount > 0 && (
+                <div className="mt-3 flex items-center gap-3 pt-3 border-t border-gray-100">
+                  <span className="text-xs text-gray-400">
+                    {markedCount} {markedCount === 1 ? 'событие' : markedCount < 5 ? 'события' : 'событий'} отмечено для отчёта
+                  </span>
+                  <button
+                    onClick={() => setTab('reports')}
+                    className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    → Перейти к отчётам
+                  </button>
+                </div>
+              )}
               {events.length === 0 && (
                 <div className="mt-3 flex items-center gap-3 pt-3 border-t border-gray-100">
                   <span className="text-xs text-gray-400">Или посмотрите как это работает:</span>
@@ -485,9 +466,9 @@ export default function TriggerRadar() {
               )}
             </div>
 
-            {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 min-w-0">
+            {/* Events list */}
+            <div>
+              <div className="min-w-0">
                 {/* Status filter + counters */}
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
@@ -583,71 +564,6 @@ export default function TriggerRadar() {
                   </div>
                 )}
               </div>
-
-              {/* Brief Panel */}
-              <div className="lg:col-span-1">
-                <div className={`bg-white rounded-xl border p-5 lg:sticky lg:top-20 transition-colors ${brief ? 'border-emerald-200' : 'border-gray-200'}`}>
-                  <h2 className="font-semibold text-gray-900 mb-1">Аналитический бриф</h2>
-                  <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-                    Отмечайте события флажком. Когда накопится 3–5 — создайте готовый бриф для команды одним нажатием.
-                  </p>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-4">
-                    <span className="text-sm text-gray-600">Выбрано для брифа</span>
-                    <span className={`text-xl font-bold ${markedCount > 0 ? 'text-blue-600' : 'text-gray-300'}`}>{markedCount}</span>
-                  </div>
-                  <button
-                    onClick={handleGenerateBrief}
-                    disabled={markedCount === 0 || generatingBrief}
-                    className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                  >
-                    {generatingBrief ? (
-                      <>
-                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Генерация...
-                      </>
-                    ) : 'Создать бриф'}
-                  </button>
-                  {briefError && <p className="mt-3 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{briefError}</p>}
-                  {brief && (
-                    <div className="mt-4 border-t border-gray-100 pt-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-1.5">
-                          <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span className="text-xs font-semibold text-gray-800">Бриф готов</span>
-                        </div>
-                        <button
-                          onClick={copyBrief}
-                          className={`text-xs font-medium flex items-center gap-1 transition-colors px-2.5 py-1 rounded-md ${copied ? 'text-emerald-700 bg-emerald-50' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'}`}
-                        >
-                          {copied ? (
-                            <>
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Скопировано
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
-                              Скопировать текст
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <div className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-3 max-h-[480px] overflow-y-auto">
-                        {brief}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           </>
         )}
@@ -679,7 +595,16 @@ export default function TriggerRadar() {
 
         {/* ── Analytics Tab ── */}
         {tab === 'analytics' && (
-          <AnalyticsPanel events={activeEvents} />
+          <AnalyticsPanel events={activeEvents} onGenerateReport={() => setTab('reports')} />
+        )}
+
+        {/* ── Reports Tab ── */}
+        {tab === 'reports' && (
+          <ReportsPanel
+            activeEvents={activeEvents}
+            markedEvents={markedEvents}
+            onReportCountChange={setStoredReportCount}
+          />
         )}
       </main>
     </div>

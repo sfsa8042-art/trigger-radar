@@ -35,9 +35,9 @@ function extractDomain(url: string): string {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type CorrelationType = 'same_competitor' | 'same_technology' | 'regulatory_amplifies';
+export type CorrelationType = 'same_competitor' | 'same_technology' | 'regulatory_amplifies';
 
-interface SignalCluster {
+export interface SignalCluster {
   id: string;
   label: string;
   correlationType: CorrelationType;
@@ -202,7 +202,7 @@ function buildRegulatoryAmplifiesClusters(events: TriggerEvent[]): SignalCluster
   return clusters;
 }
 
-function buildCorrelationClusters(events: TriggerEvent[]): SignalCluster[] {
+export function buildCorrelationClusters(events: TriggerEvent[]): SignalCluster[] {
   return [
     ...buildSameCompetitorClusters(events),
     ...buildSameTechnologyClusters(events),
