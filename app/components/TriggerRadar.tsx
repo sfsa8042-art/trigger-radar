@@ -612,7 +612,7 @@ export default function TriggerRadar() {
 
         {/* ── Analytics Tab ── */}
         {tab === 'analytics' && (
-          <AnalyticsPanel events={activeEvents} onGenerateReport={() => setTab('reports')} />
+          <AnalyticsPanel events={activeEvents} allEvents={events} onGenerateReport={() => setTab('reports')} />
         )}
 
         {/* ── Reports Tab ── */}
