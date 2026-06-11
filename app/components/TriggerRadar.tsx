@@ -5,6 +5,7 @@ import type { TriggerEvent, EventCategory, Source, Candidate } from '@/lib/types
 import { buildDefaultSources } from '@/lib/defaultSources';
 import { archiveExpiredEvents, isActive } from '@/lib/eventLifecycle';
 import { loadDemoData, DEMO_EVENTS } from '@/lib/demoData';
+import { loadReports } from '@/lib/reportStorage';
 import EventCard from './EventCard';
 import SourcesPanel from './SourcesPanel';
 import CandidateInbox from './CandidateInbox';
@@ -107,6 +108,7 @@ export default function TriggerRadar() {
     setEvents(updated);
     setSources(storedSources);
     setCandidates(storedCandidates);
+    setStoredReportCount(loadReports().length);
     setHydrated(true);
   }, []);
 
@@ -127,6 +129,12 @@ export default function TriggerRadar() {
   };
 
   const handleLoadDemo = () => {
+    loadDemoData();
+    persistEvents(DEMO_EVENTS);
+  };
+
+  const handleReloadDemo = () => {
+    if (!window.confirm('Заменить текущие события демо-данными? Текущие события будут удалены.')) return;
     loadDemoData();
     persistEvents(DEMO_EVENTS);
   };
@@ -450,20 +458,29 @@ export default function TriggerRadar() {
                   </button>
                 </div>
               )}
-              {events.length === 0 && (
-                <div className="mt-3 flex items-center gap-3 pt-3 border-t border-gray-100">
-                  <span className="text-xs text-gray-400">Или посмотрите как это работает:</span>
+              <div className="mt-3 flex items-center gap-3 pt-3 border-t border-gray-100">
+                {events.length === 0 ? (
+                  <>
+                    <span className="text-xs text-gray-400">Или посмотрите как это работает:</span>
+                    <button
+                      onClick={handleLoadDemo}
+                      className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Загрузить демо-пример
+                    </button>
+                  </>
+                ) : (
                   <button
-                    onClick={handleLoadDemo}
-                    className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                    onClick={handleReloadDemo}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    Загрузить демо-пример
+                    Перезагрузить демо
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Events list */}
@@ -595,7 +612,7 @@ export default function TriggerRadar() {
 
         {/* ── Analytics Tab ── */}
         {tab === 'analytics' && (
-          <AnalyticsPanel events={activeEvents} onGenerateReport={() => setTab('reports')} />
+          <AnalyticsPanel events={activeEvents} allEvents={events} onGenerateReport={() => setTab('reports')} />
         )}
 
         {/* ── Reports Tab ── */}

@@ -2,6 +2,8 @@ import type { TriggerEvent } from './types';
 
 export type ReportSeverity = 'normal' | 'attention' | 'critical';
 
+// ── Tezis & Section — used in content sections ────────────────────────────────
+
 export interface ReportTezis {
   text: string;
   sourceEventIds?: string[];
@@ -15,6 +17,26 @@ export interface ReportSection {
   tezises: ReportTezis[];
   avgConfidence?: number;
 }
+
+// ── Executive Insight (Phase 8.5+) ───────────────────────────────────────────
+
+export interface InsightBlock {
+  text: string;
+  sourceEventIds: string[];
+  sourceCorrelationIds?: string[];
+  confidenceScore?: number;
+  confidenceReason?: string;
+  evidenceQuotes?: string[];
+}
+
+export interface ExecutiveInsight {
+  mainConclusion: InsightBlock;
+  mainThreat?: InsightBlock;        // absent when no competitor/threat events
+  mainOpportunity?: InsightBlock;   // absent when no tender/opportunity events
+  urgentAction: InsightBlock;
+}
+
+// ── Actions & Trust ───────────────────────────────────────────────────────────
 
 export interface ReportAction {
   action: string;
@@ -33,8 +55,13 @@ export interface ReportTrustBlock {
   period: string;
 }
 
+// ── Structured Report ─────────────────────────────────────────────────────────
+
 export interface StructuredReport {
   headline: string;
+  /** Phase 8.5+: 4-block management insight. Rendered instead of avangardImpactSection when present. */
+  executiveInsight?: ExecutiveInsight;
+  /** @deprecated kept for backward compat with pre-8.5 stored reports */
   avangardImpactSection: ReportSection;
   sections: ReportSection[];
   priorityActions: ReportAction[];
@@ -42,6 +69,8 @@ export interface StructuredReport {
   reportSeverity: ReportSeverity;
   generatedAt: string;
 }
+
+// ── Storage ───────────────────────────────────────────────────────────────────
 
 export interface CorrelationSnapshot {
   id: string;

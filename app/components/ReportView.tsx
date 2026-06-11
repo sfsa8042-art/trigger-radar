@@ -1,11 +1,25 @@
 'use client';
 
-import type { StoredReport, ReportTezis, ReportSection, ReportAction, CorrelationSnapshot } from '@/lib/reportTypes';
+import type {
+  StoredReport,
+  ReportTezis,
+  ReportSection,
+  ReportAction,
+  CorrelationSnapshot,
+  InsightBlock,
+  ExecutiveInsight,
+} from '@/lib/reportTypes';
 import type { TriggerEvent } from '@/lib/types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function truncate(s: string, n: number) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+function strengthLabel(strength: number): string {
+  if (strength >= 70) return 'сильная связь';
+  if (strength >= 40) return 'умеренная связь';
+  return 'слабая связь';
+}
 
 const SEVERITY_CONFIG = {
   critical:  { label: '🔴 Критический отчёт', cls: 'bg-red-50 border-red-200 text-red-700' },
@@ -49,15 +63,129 @@ function CorrelationChip({ corrId, snapshots }: { corrId: string; snapshots: Cor
   if (!cluster) return null;
   return (
     <span
-      title={cluster.insight}
+      title={`${cluster.insight} (сила: ${cluster.strength})`}
       className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100"
     >
-      🔗 {truncate(cluster.label, 35)} · {cluster.strength}
+      🔗 {truncate(cluster.label, 35)} · {strengthLabel(cluster.strength)}
     </span>
   );
 }
 
-// ── Tezis ──────────────────────────────────────────────────────────────────────
+function EvidenceBlock({ quotes }: { quotes: string[] }) {
+  if (quotes.length === 0) return null;
+  return (
+    <div className="mt-2 pl-2 border-l-2 border-gray-100">
+      <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Из источника:</p>
+      <div className="space-y-0.5">
+        {quotes.map((q, i) => (
+          <p key={i} className="text-[10px] text-gray-400 italic leading-snug">&ldquo;{q}&rdquo;</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Executive Insight ──────────────────────────────────────────────────────────
+
+const INSIGHT_CONFIG = {
+  mainConclusion:  { icon: '📊', label: 'Главный вывод',       borderCls: 'border-gray-300',    labelCls: 'text-gray-500' },
+  mainThreat:      { icon: '🔴', label: 'Главная угроза',       borderCls: 'border-red-400',     labelCls: 'text-red-600' },
+  mainOpportunity: { icon: '🟢', label: 'Главная возможность',  borderCls: 'border-emerald-400', labelCls: 'text-emerald-700' },
+  urgentAction:    { icon: '⚡', label: 'Что решить сейчас',    borderCls: 'border-blue-400',    labelCls: 'text-blue-700' },
+} as const;
+
+type InsightKey = keyof typeof INSIGHT_CONFIG;
+
+function InsightBlockView({
+  block, insightKey, eventSnapshots, correlationSnapshots,
+}: {
+  block: InsightBlock;
+  insightKey: InsightKey;
+  eventSnapshots: TriggerEvent[];
+  correlationSnapshots: CorrelationSnapshot[];
+}) {
+  // Skip blocks without sources (traceability requirement)
+  if (block.sourceEventIds.length === 0) return null;
+
+  const cfg = INSIGHT_CONFIG[insightKey];
+  const hasChips =
+    block.sourceEventIds.length > 0 ||
+    (block.sourceCorrelationIds?.length ?? 0) > 0;
+
+  return (
+    <div className={`border-l-4 rounded-r-xl bg-white px-4 py-3.5 mb-3 shadow-sm ${cfg.borderCls}`}>
+      <p className={`text-[10px] font-bold uppercase tracking-wide mb-1.5 ${cfg.labelCls}`}>
+        {cfg.icon} {cfg.label}
+      </p>
+      <p className="text-sm font-medium text-gray-900 leading-relaxed mb-2">{block.text}</p>
+
+      {/* Confidence row */}
+      <div className="flex flex-wrap gap-1.5 items-center mb-1.5">
+        {block.confidenceScore !== undefined && <ConfidencePill score={block.confidenceScore} />}
+        {block.confidenceReason && (
+          <span className="text-[10px] text-gray-400 italic">{block.confidenceReason}</span>
+        )}
+      </div>
+
+      {/* Source chips */}
+      {hasChips && (
+        <div className="flex flex-wrap gap-1.5">
+          {block.sourceEventIds.map(id => (
+            <EventChip key={id} eventId={id} snapshots={eventSnapshots} />
+          ))}
+          {block.sourceCorrelationIds?.map(id => (
+            <CorrelationChip key={id} corrId={id} snapshots={correlationSnapshots} />
+          ))}
+        </div>
+      )}
+
+      <EvidenceBlock quotes={block.evidenceQuotes ?? []} />
+    </div>
+  );
+}
+
+function ExecutiveInsightView({
+  insight, eventSnapshots, correlationSnapshots,
+}: {
+  insight: ExecutiveInsight;
+  eventSnapshots: TriggerEvent[];
+  correlationSnapshots: CorrelationSnapshot[];
+}) {
+  return (
+    <div className="mb-6">
+      <InsightBlockView
+        block={insight.mainConclusion}
+        insightKey="mainConclusion"
+        eventSnapshots={eventSnapshots}
+        correlationSnapshots={correlationSnapshots}
+      />
+      {insight.mainThreat && (
+        <InsightBlockView
+          block={insight.mainThreat}
+          insightKey="mainThreat"
+          eventSnapshots={eventSnapshots}
+          correlationSnapshots={correlationSnapshots}
+        />
+      )}
+      {insight.mainOpportunity && (
+        <InsightBlockView
+          block={insight.mainOpportunity}
+          insightKey="mainOpportunity"
+          eventSnapshots={eventSnapshots}
+          correlationSnapshots={correlationSnapshots}
+        />
+      )}
+      <InsightBlockView
+        block={insight.urgentAction}
+        insightKey="urgentAction"
+        eventSnapshots={eventSnapshots}
+        correlationSnapshots={correlationSnapshots}
+      />
+    </div>
+  );
+}
+
+// ── Legacy Section & Tezis (content sections) ─────────────────────────────────
 
 function TezisBlock({
   tezis, index, eventSnapshots, correlationSnapshots,
@@ -87,19 +215,11 @@ function TezisBlock({
             ))}
           </div>
         )}
-        {(tezis.evidenceQuotes?.length ?? 0) > 0 && (
-          <div className="mt-2 pl-2 border-l-2 border-gray-100 space-y-0.5">
-            {tezis.evidenceQuotes!.map((q, i) => (
-              <p key={i} className="text-[10px] text-gray-400 italic leading-snug">&ldquo;{q}&rdquo;</p>
-            ))}
-          </div>
-        )}
+        <EvidenceBlock quotes={tezis.evidenceQuotes ?? []} />
       </div>
     </div>
   );
 }
-
-// ── Section ────────────────────────────────────────────────────────────────────
 
 function SectionBlock({
   section, eventSnapshots, correlationSnapshots, accent,
@@ -156,8 +276,12 @@ function ActionBlock({
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-gray-900 leading-snug mb-1">{action.action}</p>
         <div className="flex flex-wrap gap-2 text-[10px] mb-1">
-          {action.responsible && (
+          {action.responsible ? (
             <span className="font-medium text-gray-600">{action.responsible}</span>
+          ) : (
+            <span className="font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+              ⚠ Ответственный не назначен
+            </span>
           )}
           {action.deadline && (
             <span className="text-amber-600 font-medium">до {action.deadline}</span>
@@ -194,11 +318,11 @@ export default function ReportView({ stored }: ReportViewProps) {
   });
 
   const trustPills = [
-    { label: 'Сигналов',    val: tb.signalCount,                                         cls: 'bg-blue-50 text-blue-700 border-blue-100' },
-    { label: 'Источников',  val: tb.sourceCount,                                         cls: 'bg-gray-50 text-gray-700 border-gray-200' },
-    { label: 'Конкурентов', val: tb.competitorCount,                                     cls: 'bg-orange-50 text-orange-700 border-orange-100' },
+    { label: 'Сигналов',    val: tb.signalCount,                                              cls: 'bg-blue-50 text-blue-700 border-blue-100' },
+    { label: 'Источников',  val: tb.sourceCount,                                              cls: 'bg-gray-50 text-gray-700 border-gray-200' },
+    { label: 'Конкурентов', val: tb.competitorCount,                                          cls: 'bg-orange-50 text-orange-700 border-orange-100' },
     { label: 'Уверенность', val: tb.avgConfidenceScore > 0 ? `${tb.avgConfidenceScore}%` : '—', cls: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-    { label: 'Корреляций',  val: tb.correlationCount,                                    cls: 'bg-purple-50 text-purple-700 border-purple-100' },
+    { label: 'Корреляций',  val: tb.correlationCount,                                         cls: 'bg-purple-50 text-purple-700 border-purple-100' },
   ];
 
   return (
@@ -217,10 +341,8 @@ export default function ReportView({ stored }: ReportViewProps) {
           </span>
         </div>
 
-        {/* Headline */}
         <p className="text-sm text-gray-900 leading-relaxed font-medium mb-4">{report.headline}</p>
 
-        {/* Trust Block */}
         <div className="border-t border-gray-100 pt-4">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
             Основан на проверенных данных
@@ -237,14 +359,22 @@ export default function ReportView({ stored }: ReportViewProps) {
         </div>
       </div>
 
-      {/* ── Why It Matters for Avangard ── */}
-      {report.avangardImpactSection.tezises.length > 0 && (
-        <SectionBlock
-          section={{ ...report.avangardImpactSection, title: 'Почему это важно для Авангарда' }}
+      {/* ── Executive Insight (Phase 8.5+) or legacy fallback ── */}
+      {report.executiveInsight ? (
+        <ExecutiveInsightView
+          insight={report.executiveInsight}
           eventSnapshots={eventSnapshots}
           correlationSnapshots={correlationSnapshots}
-          accent="bg-blue-50 border-blue-100"
         />
+      ) : (
+        report.avangardImpactSection.tezises.length > 0 && (
+          <SectionBlock
+            section={{ ...report.avangardImpactSection, title: 'Почему это важно для Авангарда' }}
+            eventSnapshots={eventSnapshots}
+            correlationSnapshots={correlationSnapshots}
+            accent="bg-blue-50 border-blue-100"
+          />
+        )
       )}
 
       {/* ── Content sections ── */}

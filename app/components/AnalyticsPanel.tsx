@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { TriggerEvent, EventImportance, AvangardDirection, ImpactLevel } from '@/lib/types';
-import CompetitorWatch from './CompetitorWatch';
+import CompetitiveIntelHub from './CompetitiveIntelHub';
 import TrendEngine from './TrendEngine';
 import CorrelationEngine from './CorrelationEngine';
 
@@ -401,10 +401,11 @@ function SectionBizImpact({ events }: { events: TriggerEvent[] }) {
 
 interface AnalyticsPanelProps {
   events: TriggerEvent[];
+  allEvents?: TriggerEvent[];
   onGenerateReport?: () => void;
 }
 
-export default function AnalyticsPanel({ events, onGenerateReport }: AnalyticsPanelProps) {
+export default function AnalyticsPanel({ events, allEvents, onGenerateReport }: AnalyticsPanelProps) {
   const [activeSection, setActiveSection] = useState('summary');
 
   if (events.length === 0) {
@@ -466,7 +467,7 @@ export default function AnalyticsPanel({ events, onGenerateReport }: AnalyticsPa
       <div className="flex-1 min-w-0">
         {activeSection === 'summary'     && <SectionSummary    events={events} />}
         {activeSection === 'correlation' && <CorrelationEngine events={events} />}
-        {activeSection === 'competitor'  && <CompetitorWatch   events={events} />}
+        {activeSection === 'competitor'  && <CompetitiveIntelHub activeEvents={events} allEvents={allEvents ?? events} />}
         {activeSection === 'tender'     && <SectionTender     events={events} />}
         {activeSection === 'regulation' && <SectionRegulation events={events} />}
         {activeSection === 'materials'  && <SectionMaterials  events={events} />}

@@ -45,9 +45,10 @@ export default function ReportsPanel({ activeEvents, markedEvents, onReportCount
     setGenerating(true);
     setGenerateError(null);
 
-    // Build correlation snapshots from current active events
+    // Build correlation snapshots from current active events, then filter to those
+    // relevant to the report events so trustBlock.correlationCount matches report content
     const clusters = buildCorrelationClusters(activeEvents);
-    const correlationSnapshots: CorrelationSnapshot[] = clusters.map(c => ({
+    const allSnapshots: CorrelationSnapshot[] = clusters.map(c => ({
       id: c.id,
       label: c.label,
       correlationType: c.correlationType,
@@ -55,6 +56,10 @@ export default function ReportsPanel({ activeEvents, markedEvents, onReportCount
       insight: c.insight,
       eventIds: c.events.map(e => e.id),
     }));
+    const reportEventIds = new Set(eventsForReport.map(e => e.id));
+    const correlationSnapshots = allSnapshots.filter(c =>
+      c.eventIds.some(id => reportEventIds.has(id))
+    );
 
     try {
       const res = await fetch('/api/brief', {
@@ -163,8 +168,15 @@ export default function ReportsPanel({ activeEvents, markedEvents, onReportCount
                     <p className={`text-[11px] font-medium leading-snug ${activeId === r.id ? 'text-blue-700' : 'text-gray-700'}`}>
                       {r.title}
                     </p>
-                    <p className="text-[10px] text-gray-400">
-                      {r.eventCount} событий · {formatShortDate(r.generatedAt)}
+                    {r.report.headline && (
+                      <p className="text-[10px] text-gray-500 leading-snug mt-0.5 line-clamp-2">
+                        {r.report.headline.length > 60
+                          ? r.report.headline.slice(0, 60) + '…'
+                          : r.report.headline}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {r.eventCount} сигн. · {formatShortDate(r.generatedAt)}
                     </p>
                   </div>
                   <button
