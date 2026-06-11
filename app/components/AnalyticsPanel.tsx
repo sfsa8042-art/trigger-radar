@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { TriggerEvent, EventImportance, AvangardDirection, ImpactLevel } from '@/lib/types';
 import CompetitorWatch from './CompetitorWatch';
 import TrendEngine from './TrendEngine';
+import CorrelationEngine from './CorrelationEngine';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ const BIZ_DIMS: Array<{ key: keyof NonNullable<TriggerEvent['businessImpact']>; 
 
 const NAV_ITEMS = [
   { id: 'summary',     label: 'Сводка для руководства' },
+  { id: 'correlation', label: 'Корреляции' },
   { id: 'competitor',  label: 'Конкуренты' },
   { id: 'tender',      label: 'Тендеры' },
   { id: 'regulation',  label: 'Регуляторика' },
@@ -453,8 +455,9 @@ export default function AnalyticsPanel({ events }: AnalyticsPanelProps) {
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        {activeSection === 'summary'    && <SectionSummary    events={events} />}
-        {activeSection === 'competitor' && <CompetitorWatch events={events} />}
+        {activeSection === 'summary'     && <SectionSummary    events={events} />}
+        {activeSection === 'correlation' && <CorrelationEngine events={events} />}
+        {activeSection === 'competitor'  && <CompetitorWatch   events={events} />}
         {activeSection === 'tender'     && <SectionTender     events={events} />}
         {activeSection === 'regulation' && <SectionRegulation events={events} />}
         {activeSection === 'materials'  && <SectionMaterials  events={events} />}
