@@ -45,9 +45,10 @@ export default function ReportsPanel({ activeEvents, markedEvents, onReportCount
     setGenerating(true);
     setGenerateError(null);
 
-    // Build correlation snapshots from current active events
+    // Build correlation snapshots from current active events, then filter to those
+    // relevant to the report events so trustBlock.correlationCount matches report content
     const clusters = buildCorrelationClusters(activeEvents);
-    const correlationSnapshots: CorrelationSnapshot[] = clusters.map(c => ({
+    const allSnapshots: CorrelationSnapshot[] = clusters.map(c => ({
       id: c.id,
       label: c.label,
       correlationType: c.correlationType,
@@ -55,6 +56,10 @@ export default function ReportsPanel({ activeEvents, markedEvents, onReportCount
       insight: c.insight,
       eventIds: c.events.map(e => e.id),
     }));
+    const reportEventIds = new Set(eventsForReport.map(e => e.id));
+    const correlationSnapshots = allSnapshots.filter(c =>
+      c.eventIds.some(id => reportEventIds.has(id))
+    );
 
     try {
       const res = await fetch('/api/brief', {

@@ -157,7 +157,9 @@ export function computeConfidenceReason(
     : 0;
 
   if (count === 1 && !hasCorr) {
-    return 'Основано на одном источнике — требует проверки';
+    if (avgConf >= 80) return 'Высокая достоверность — подтверждено источником высокого качества';
+    if (avgConf >= 65) return 'Умеренная достоверность — основано на одном источнике';
+    return 'Требует дополнительной проверки';
   }
   if (topCorr && topCorr.strength >= 70) {
     return 'Подтверждено сильным корреляционным кластером';
@@ -171,5 +173,5 @@ export function computeConfidenceReason(
   if (count >= 2) {
     return `Основано на ${count} источниках`;
   }
-  return 'Основано на одном источнике — требует проверки';
+  return 'Требует дополнительной проверки';
 }
