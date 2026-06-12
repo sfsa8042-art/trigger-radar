@@ -1,4 +1,5 @@
 import type { TriggerEvent, AvangardDirection, EventImportance } from './types';
+import { findCompetitorByDomain, normalizeCompetitorName } from './companyKnowledge';
 
 // Minimal cluster shape needed for scoring — avoids importing 'use client' CorrelationEngine
 type ClusterRef = { events: Array<{ id: string }> };
@@ -67,17 +68,12 @@ export interface CompetitiveIntelSummary {
 // ── Low-level helpers ─────────────────────────────────────────────────────────
 
 export function resolveCompetitorName(event: TriggerEvent): string {
-  if (event.competitorName && event.competitorName !== 'null') return event.competitorName;
+  if (event.competitorName && event.competitorName !== 'null') {
+    return normalizeCompetitorName(event.competitorName);
+  }
   try {
     const host = new URL(event.url).hostname.replace('www.', '');
-    const MAP: Record<string, string> = {
-      'technoavia.ru':       'Техноавиа',
-      'vostok-service.ru':   'Восток-Сервис',
-      'ursus.ru':            'Урсус',
-      'soyuzspecodezhda.ru': 'СОЮЗСПЕЦОДЕЖДА',
-      'trakt.ru':            'Тракт',
-    };
-    return MAP[host] ?? host;
+    return findCompetitorByDomain(host)?.name ?? host;
   } catch {
     return 'Неизвестный конкурент';
   }

@@ -7,7 +7,7 @@ const SEEDS: SourceSeed[] = [
   { name: 'Техноавиа', url: 'https://www.technoavia.ru/', type: 'competitor', active: true, priority: 'high' },
   { name: 'Восток-Сервис', url: 'https://www.vostok-service.ru/', type: 'competitor', active: true, priority: 'high' },
   { name: 'Урсус', url: 'https://ursus.ru/', type: 'competitor', active: true, priority: 'medium' },
-  { name: 'СОЮЗСПЕЦОДЕЖДА', url: 'https://soyuzspecodezhda.ru/', type: 'competitor', active: true, priority: 'medium' },
+  { name: 'Союзспецодежда', url: 'https://soyuzspecodezhda.ru/', type: 'competitor', active: true, priority: 'medium' },
   // Тендеры
   // TODO: уточнить URL раздела спецодежды на B2B-Center (главная не содержит релевантных ссылок).
   // Пример поиска: https://www.b2b-center.ru/market/?searchText=спецодежда — требует проверки доступности.

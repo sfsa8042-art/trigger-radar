@@ -64,6 +64,47 @@ export interface ProductCategory {
   description?: string;
 }
 
+/**
+ * Продуктовая линейка — второй уровень детализации ProductCategory.
+ * KB-1: 11 конкретных линеек Авангарда.
+ * Данные: только безопасные поля — certificationStatus='unknown', keyGosts=[].
+ */
+export interface ProductLine {
+  id: string;
+  name: string;
+  /** Верхняя категория */
+  parentCategory: 'workwear' | 'footwear' | 'ppe';
+  /**
+   * Одно или несколько направлений AvangardDirection.
+   * Массив нужен: Зимняя спецодежда = ['workwear', 'membranes'],
+   * Антистатическая обувь = ['footwear', 'antistatic'].
+   */
+  directions: AvangardDirection[];
+  /** Отрасли применения. IDs из industries[]. */
+  targetIndustryIds: string[];
+  /** IDs из materials[]. Только материалы, перечисленные в company.ts. */
+  relatedMaterialIds: string[];
+  /** IDs из technologies[]. Только технологии из company.ts. */
+  relatedTechnologyIds: string[];
+  /**
+   * ГОСТы — ТОЛЬКО подтверждённые.
+   * Дефолт: [] — не заполнять без верификации документов.
+   * Риск галлюцинаций высокий — не передавать пустой массив в Gemini-промпт.
+   */
+  keyGosts: string[];
+  /**
+   * Статус сертификации.
+   * 'unknown' — безопасный дефолт для всех линеек KB-1.
+   * 'confirmed' ставить только при наличии реального документа.
+   * В Gemini-промпт включать только 'confirmed' записи.
+   */
+  certificationStatus: 'confirmed' | 'pending' | 'unknown';
+  /** Входит ли в CORE_DIRS — влияет на ThreatScore в CompetitiveIntelHub. */
+  isCoreLine: boolean;
+  /** ○ KB-2: только с реальными данными о ценообразовании */
+  priceSegment?: 'premium' | 'medium' | 'budget';
+}
+
 /** Отраслевой профиль клиентской базы */
 export interface IndustryProfile {
   id: string;
@@ -269,6 +310,7 @@ export interface MaterialProfile {
 export interface CompanyKnowledge {
   company: CompanyProfile;
   products: ProductCategory[];
+  productLines: ProductLine[];
   industries: IndustryProfile[];
   competitors: CompetitorProfile[];
   strategy: StrategyProfile;
@@ -343,6 +385,156 @@ export const COMPANY_KNOWLEDGE: CompanyKnowledge = {
       isCoreLine:       true,   // ppe ∈ CORE_DIRS
       targetIndustryIds: [],    // ○ KB-1
       keyGosts:         [],     // ○ KB-1
+    },
+  ],
+
+  // ── productLines ─────────────────────────────────────────────────────────────
+  // KB-1: 11 линеек. Заполнены только безопасные поля.
+  // keyGosts: [] — не заполнять без верификации реальных документов.
+  // certificationStatus: 'unknown' — безопасный дефолт.
+  // isCoreLine: производное от CORE_DIRS = { workwear, ppe, flame-resistant, membranes, oil-gas, metallurgy }
+
+  productLines: [
+
+    // ── workwear ────────────────────────────────────────────────────────────────
+
+    {
+      id:                   'flame-resistant-workwear',
+      name:                 'Огнестойкая спецодежда',
+      parentCategory:       'workwear',
+      directions:           ['flame-resistant'],         // flame-resistant ∈ CORE_DIRS
+      targetIndustryIds:    ['oil-gas', 'metallurgy', 'energy', 'chemicals'],
+      relatedMaterialIds:   ['flame-resistant-fabrics', 'aramid-fibers'],
+      relatedTechnologyIds: ['flame-antistatic'],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           true,
+    },
+    {
+      id:                   'antistatic-workwear',
+      name:                 'Антистатическая спецодежда',
+      parentCategory:       'workwear',
+      directions:           ['antistatic'],              // antistatic ∉ CORE_DIRS
+      targetIndustryIds:    ['oil-gas', 'chemicals', 'energy'],
+      relatedMaterialIds:   ['antistatic-materials'],
+      relatedTechnologyIds: ['flame-antistatic'],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           false,
+    },
+    {
+      id:                   'membrane-workwear',
+      name:                 'Мембранная спецодежда',
+      parentCategory:       'workwear',
+      directions:           ['membranes', 'workwear'],   // membranes ∈ CORE_DIRS
+      targetIndustryIds:    ['oil-gas', 'construction', 'mining'],
+      relatedMaterialIds:   ['membrane-fabrics'],
+      relatedTechnologyIds: ['membranes', 'moisture-wicking'],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           true,
+    },
+    {
+      id:                   'hi-vis-workwear',
+      name:                 'Сигнальная одежда',
+      parentCategory:       'workwear',
+      directions:           ['hi-vis'],                  // hi-vis ∉ CORE_DIRS
+      targetIndustryIds:    ['construction', 'energy'],
+      relatedMaterialIds:   ['reflective-materials'],
+      relatedTechnologyIds: ['hi-vis-finish'],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           false,
+    },
+    {
+      id:                   'winter-workwear',
+      name:                 'Зимняя спецодежда',
+      parentCategory:       'workwear',
+      directions:           ['workwear', 'membranes'],   // workwear, membranes ∈ CORE_DIRS
+      targetIndustryIds:    ['oil-gas', 'construction', 'metallurgy', 'mining'],
+      relatedMaterialIds:   ['membrane-fabrics', 'high-strength-synthetics'],
+      relatedTechnologyIds: ['membranes', 'moisture-wicking'],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           true,
+    },
+    {
+      id:                   'summer-workwear',
+      name:                 'Летняя спецодежда',
+      parentCategory:       'workwear',
+      directions:           ['workwear'],                // workwear ∈ CORE_DIRS
+      targetIndustryIds:    ['construction', 'chemicals', 'food'],
+      relatedMaterialIds:   ['high-strength-synthetics'],
+      relatedTechnologyIds: ['ergonomic-cut'],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           true,
+    },
+
+    // ── footwear ────────────────────────────────────────────────────────────────
+
+    {
+      id:                   'protective-footwear',
+      name:                 'Защитная спецобувь',
+      parentCategory:       'footwear',
+      directions:           ['footwear'],                // footwear ∉ CORE_DIRS
+      targetIndustryIds:    ['construction', 'metallurgy', 'oil-gas'],
+      relatedMaterialIds:   [],
+      relatedTechnologyIds: [],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           false,
+    },
+    {
+      id:                   'antistatic-footwear',
+      name:                 'Антистатическая спецобувь',
+      parentCategory:       'footwear',
+      directions:           ['footwear', 'antistatic'],  // ∉ CORE_DIRS
+      targetIndustryIds:    ['oil-gas', 'chemicals', 'energy'],
+      relatedMaterialIds:   ['antistatic-materials'],
+      relatedTechnologyIds: [],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           false,
+    },
+    {
+      id:                   'winter-footwear',
+      name:                 'Зимняя спецобувь',
+      parentCategory:       'footwear',
+      directions:           ['footwear'],                // footwear ∉ CORE_DIRS
+      targetIndustryIds:    ['oil-gas', 'construction', 'mining'],
+      relatedMaterialIds:   [],
+      relatedTechnologyIds: [],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           false,
+    },
+    {
+      id:                   'summer-footwear',
+      name:                 'Летняя спецобувь',
+      parentCategory:       'footwear',
+      directions:           ['footwear'],                // footwear ∉ CORE_DIRS
+      targetIndustryIds:    ['construction', 'chemicals'],
+      relatedMaterialIds:   [],
+      relatedTechnologyIds: [],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           false,
+    },
+
+    // ── ppe ─────────────────────────────────────────────────────────────────────
+
+    {
+      id:                   'basic-ppe',
+      name:                 'Базовые СИЗ',
+      parentCategory:       'ppe',
+      directions:           ['ppe'],                     // ppe ∈ CORE_DIRS
+      targetIndustryIds:    ['oil-gas', 'metallurgy', 'construction', 'energy', 'chemicals'],
+      relatedMaterialIds:   [],
+      relatedTechnologyIds: [],
+      keyGosts:             [],
+      certificationStatus:  'unknown',
+      isCoreLine:           true,
     },
   ],
 
@@ -600,3 +792,92 @@ export const COMPETITOR_HOSTNAME_PATTERNS: Array<[string, string]> =
   COMPANY_KNOWLEDGE.competitors
     .filter(c => c.hostnamePatterns.length > 0)
     .flatMap(c => c.hostnamePatterns.map(p => [p, c.name] as [string, string]));
+
+// ── Helper functions ───────────────────────────────────────────────────────────
+
+/**
+ * Найти конкурента по точному hostname (без www).
+ * findCompetitorByDomain('technoavia.ru') → { name: 'Техноавиа', ... }
+ */
+export function findCompetitorByDomain(domain: string): CompetitorProfile | undefined {
+  const normalized = domain.toLowerCase().replace(/^www\./, '');
+  return COMPANY_KNOWLEDGE.competitors.find(c =>
+    c.domains.some(d => d.toLowerCase() === normalized)
+  );
+}
+
+/**
+ * Найти конкурента по паттерну hostname (hostname.includes(pattern)).
+ * Заменяет for-loop в preclassifySource().
+ * findCompetitorByHostnamePattern('www.technoavia.ru') → { name: 'Техноавиа', ... }
+ */
+export function findCompetitorByHostnamePattern(hostname: string): CompetitorProfile | undefined {
+  const lower = hostname.toLowerCase();
+  return COMPANY_KNOWLEDGE.competitors.find(c =>
+    c.hostnamePatterns.some(p => lower.includes(p))
+  );
+}
+
+/**
+ * Нормализовать любой вариант имени конкурента к каноническому.
+ * Обрабатывает устаревшие варианты из localStorage:
+ *   'СОЮЗСПЕЦОДЕЖДА' → 'Союзспецодежда'  (регистр)
+ *   'Факел'          → 'Факел-Профи'     (неполное имя)
+ */
+export function normalizeCompetitorName(input: string): string {
+  if (!input || input === 'null') return input;
+  const lower = input.toLowerCase().trim();
+  const found = COMPANY_KNOWLEDGE.competitors.find(c =>
+    c.name.toLowerCase() === lower ||
+    (c.id === 'fakel-profi' && lower === 'факел')
+  );
+  return found?.name ?? input;
+}
+
+/** Все домены конкурентов как Map<hostname, canonicalName> — заменяет разрозненные DOMAIN_MAP. */
+export function getCompetitorDomains(): Map<string, string> {
+  return COMPETITOR_DOMAIN_MAP;
+}
+
+/** Канонические имена всех конкурентов. */
+export function getCompetitorNames(): string[] {
+  return COMPANY_KNOWLEDGE.competitors.map(c => c.name);
+}
+
+// ── Product helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Все линейки, связанные с направлением (по directions[]).
+ * findProductsByDirection('flame-resistant') → [Огнестойкая спецодежда, ...]
+ */
+export function findProductsByDirection(direction: AvangardDirection): ProductLine[] {
+  return COMPANY_KNOWLEDGE.productLines.filter(p => p.directions.includes(direction));
+}
+
+/**
+ * Полнотекстовый поиск по name (регистронезависимый).
+ * findProductsByKeyword('зимн') → [Зимняя спецодежда, Зимняя спецобувь]
+ */
+export function findProductsByKeyword(text: string): ProductLine[] {
+  const lower = text.toLowerCase();
+  return COMPANY_KNOWLEDGE.productLines.filter(p =>
+    p.name.toLowerCase().includes(lower)
+  );
+}
+
+/**
+ * Только основные линейки (isCoreLine === true).
+ * Используется в ThreatScore и CompetitiveIntelHub.
+ */
+export function getCoreProductLines(): ProductLine[] {
+  return COMPANY_KNOWLEDGE.productLines.filter(p => p.isCoreLine);
+}
+
+/**
+ * Найти линейки по ГОСТу.
+ * KB-1: всегда возвращает [] (keyGosts пустые — безопасный дефолт).
+ * Будет работать когда keyGosts заполнят подтверждёнными данными.
+ */
+export function mapGostToProducts(gost: string): ProductLine[] {
+  return COMPANY_KNOWLEDGE.productLines.filter(p => p.keyGosts.includes(gost));
+}
