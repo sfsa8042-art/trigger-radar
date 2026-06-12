@@ -170,7 +170,8 @@ function buildWhyNow(
     const top    = sorted[0];
     const reason = top.avangardImpact?.reason;
     if (reason) {
-      parts.push(reason.length > 130 ? reason.slice(0, 130) + '…' : reason);
+      const truncated = reason.length > 165 ? reason.slice(0, 165) + '…' : reason;
+      parts.push(`${formatDaysAgo(top.date)}: ${truncated}`);
     } else {
       const title = top.title.length > 90 ? top.title.slice(0, 90) + '…' : top.title;
       parts.push(`${formatDaysAgo(top.date)}: ${title}.`);
