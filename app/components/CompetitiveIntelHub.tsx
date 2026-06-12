@@ -189,11 +189,7 @@ function CompetitorCard({
             +{profile.newSignals30d} за 30 дн.
           </span>
         )}
-        {profile.relevantClusterCount > 0 && (
-          <span className="text-[10px] text-purple-600">
-            {profile.relevantClusterCount} корр.
-          </span>
-        )}
+
       </div>
 
       {/* Why Now */}

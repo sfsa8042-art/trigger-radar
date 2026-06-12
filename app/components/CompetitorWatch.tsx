@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { TriggerEvent, EventImportance, AvangardDirection } from '@/lib/types';
+import { findCompetitorByDomain } from '@/lib/companyKnowledge';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -72,16 +73,7 @@ function resolveCompetitorName(event: TriggerEvent): string {
   if (event.competitorName && event.competitorName !== 'null') return event.competitorName;
   try {
     const host = new URL(event.url).hostname.replace('www.', '');
-    // Map known domains to friendly names
-    const DOMAIN_MAP: Record<string, string> = {
-      'technoavia.ru':       'Техноавиа',
-      'vostok-service.ru':   'Восток-Сервис',
-      'ursus.ru':            'Урсус',
-      'soyuzspecodezhda.ru': 'СОЮЗСПЕЦОДЕЖДА',
-      'trakt.ru':            'Тракт',
-      'fakel.ru':            'Факел',
-    };
-    return DOMAIN_MAP[host] ?? host;
+    return findCompetitorByDomain(host)?.name ?? host;
   } catch {
     return 'Неизвестный конкурент';
   }

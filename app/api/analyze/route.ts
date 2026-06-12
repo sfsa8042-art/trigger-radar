@@ -1,6 +1,7 @@
 import { type NextRequest } from 'next/server';
 import { callGemini } from '@/lib/gemini';
 import { formatCompanyContext } from '@/lib/company';
+import { findCompetitorByHostnamePattern } from '@/lib/companyKnowledge';
 import { calcExpiresAt } from '@/lib/eventLifecycle';
 import type {
   EventCategory, EventImportance, AvangardImpact, EvidenceBlock, AnalyticsEvidence,
@@ -24,24 +25,14 @@ function preclassifySource(rawUrl: string): DomainHints {
     return {};
   }
 
-  const COMPETITOR_DOMAINS: [string, string][] = [
-    ['technoavia', 'Техноавиа'],
-    ['vostok-service', 'Восток-Сервис'],
-    ['ursus', 'Урсус'],
-    ['soyuzspecodezhda', 'Союзспецодежда'],
-    ['trakt', 'Тракт'],
-    ['fakel', 'Факел-Профи'],
-  ];
-
-  for (const [pattern, name] of COMPETITOR_DOMAINS) {
-    if (hostname.includes(pattern)) {
-      return {
-        forcedCategory: 'competitor',
-        forcedMinimumImpact: 'medium',
-        sourceKind: `сайт конкурента (${name})`,
-        reason: `Домен содержит паттерн конкурента «${name}»`,
-      };
-    }
+  const competitor = findCompetitorByHostnamePattern(hostname);
+  if (competitor) {
+    return {
+      forcedCategory: 'competitor',
+      forcedMinimumImpact: 'medium',
+      sourceKind: `сайт конкурента (${competitor.name})`,
+      reason: `Домен содержит паттерн конкурента «${competitor.name}»`,
+    };
   }
 
   const TENDER_DOMAINS = [
